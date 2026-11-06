@@ -15,7 +15,10 @@ Spanish (see [docs/i18n.md](docs/i18n.md)).
 
 ## Features
 
-- List of open alerts, sorted by severity. The alert counter refreshes every minute.
+- List of open alerts, sorted by severity, then by oldest update first within each severity.
+  The alert counter refreshes every minute.
+- Labels use a compact, scrollable area so alerts with many labels stay readable.
+  When present, `resource` and `service` appear first with visual emphasis.
 - **ACK**: shows who is handling an alert. Admins can remove other people's ACKs.
 - **Close alert**: admins only. Alerts also close on their own when the source reports them as resolved.
 - **Reports** (`/reports`): most frequent alerts and daily counts over the last 1, 7, 15, 30 or 60 days.
@@ -105,6 +108,7 @@ Everything comes from environment variables (the `.env` file). See
 | `MONGO_URL` / `MONGO_PORT` | No | Where MongoDB is (Compose already points to `mongo`). |
 | `GCP_WEBHOOK_USER` / `GCP_WEBHOOK_PASSWORD` | No | Basic auth for the `/gcp` webhook. |
 | `ALERTMANAGER_TOKEN` | No | Bearer token required on `/alertmanager`. |
+| `ALERTMANAGER_DEBUG` | No | Detailed webhook logs for troubleshooting (default `false`); includes alert labels. |
 | `AWS_SNS_USER` / `AWS_SNS_PASSWORD` / `AWS_SNS_TOPIC_ARNS` | No | Basic auth and accepted topics for `/aws`. |
 | `DISABLE_GOOGLE_LOGIN` | No | Local development only. **Never use in production.** |
 
