@@ -1,7 +1,9 @@
 
 import hmac
 import json
+import logging
 import re
+from uuid import uuid4
 from datetime import datetime
 from urllib.parse import quote, urlparse
 
@@ -16,6 +18,7 @@ from routes.auth import login_required
 from utils.helpers import alerts, alerts_dict, get_session_user
 
 alerts_bp = Blueprint('alerts', __name__)
+am_logger = logging.getLogger('alertally.alertmanager')
 
 @alerts_bp.route('/alerts', methods=['GET'])
 @login_required
@@ -141,15 +144,28 @@ def _alertmanager_severity(labels):
 
 @alerts_bp.route('/alertmanager', methods=['POST'])
 def parse_alertmanager():
+    request_id = uuid4().hex
     # Token opcional: se ALERTMANAGER_TOKEN estiver definido, exige
     # "Authorization: Bearer <token>" (http_config.authorization no Alertmanager)
     if Config.ALERTMANAGER_TOKEN:
         if request.headers.get('Authorization') != f'Bearer {Config.ALERTMANAGER_TOKEN}':
+            am_logger.warning('Alertmanager unauthorized request_id=%s', request_id)
             return jsonify({'error': 'Unauthorized'}), 401
 
     payload = request.get_json(silent=True)
     if not payload or 'alerts' not in payload:
+        am_logger.warning('Alertmanager invalid payload request_id=%s', request_id)
         return jsonify({'error': 'Invalid Alertmanager payload'}), 400
+
+    am_logger.debug('Alertmanager batch %s', json.dumps({
+        'request_id': request_id, 'receiver': payload.get('receiver'),
+        'groupKey': payload.get('groupKey'), 'groupLabels': payload.get('groupLabels'),
+        'status': payload.get('status'), 'alerts_count': len(payload['alerts']),
+        'truncatedAlerts': payload.get('truncatedAlerts', 0),
+    }))
+    if payload.get('truncatedAlerts'):
+        am_logger.warning('Alertmanager truncated batch request_id=%s truncatedAlerts=%s; check max_alerts',
+                          request_id, payload['truncatedAlerts'])
 
     processed = []
     for am_alert in payload['alerts']:
@@ -158,7 +174,7 @@ def parse_alertmanager():
 
         fingerprint = am_alert.get('fingerprint')
         if not fingerprint:
-            current_app.logger.warning('Alertmanager alert without fingerprint ignored')
+            am_logger.warning('Alertmanager alert without fingerprint ignored request_id=%s', request_id)
             continue
 
         # fingerprint identifica o conjunto de labels; startsAt diferencia cada
@@ -168,6 +184,12 @@ def parse_alertmanager():
 
         severity = _alertmanager_severity(labels)
         state = 'closed' if am_alert.get('status') == 'resolved' else 'open'
+        am_logger.debug('Alertmanager alert %s', json.dumps({
+            'request_id': request_id, 'incident_id': incident_id,
+            'fingerprint': fingerprint, 'startsAt': starts_at,
+            'endsAt': am_alert.get('endsAt'), 'status': am_alert.get('status'),
+            'state': state, 'labels': labels,
+        }))
 
         update_data = {
             'source': 'alertmanager',
@@ -185,14 +207,25 @@ def parse_alertmanager():
             'update_at': datetime.now(tz=timezone(Config.TIMEZONE)),
         }
 
-        alerts.update_one(
+        result = alerts.update_one(
             {'incident_id': incident_id},
             {'$set': update_data},
             upsert=True
         )
+        am_logger.debug('Alertmanager database result %s', json.dumps({
+            'request_id': request_id, 'incident_id': incident_id, 'state': state,
+            'matched_count': result.matched_count, 'modified_count': result.modified_count,
+            'inserted': result.upserted_id is not None,
+        }))
+        if state == 'closed' and result.upserted_id is not None:
+            am_logger.warning(
+                'Alertmanager resolved without matching incident: request_id=%s fingerprint=%s startsAt=%s resource=%s service=%s',
+                request_id, fingerprint, starts_at, labels.get('resource'), labels.get('service'),
+            )
         current_app.logger.info(f'Alertmanager incident {incident_id} {state}')
         processed.append(incident_id)
 
+    am_logger.debug('Alertmanager completed request_id=%s processed=%s', request_id, len(processed))
     return jsonify({'processed': len(processed), 'incidents': processed})
 
 
