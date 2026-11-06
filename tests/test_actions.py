@@ -60,6 +60,38 @@ def test_ack_and_unack(client, alerts, open_alert):
     assert "ack_by" not in alerts.find_one({"incident_id": open_alert})
 
 
+def test_reports_separate_resource_service_and_source(client, alerts, monkeypatch):
+    from routes import main
+
+    login(client)
+    for i, (source, labels) in enumerate([
+        ('alertmanager', {'resource': 'api-geral', 'service': 'api'}),
+        ('alertmanager', {'resource': 'api-geral', 'service': 'api'}),
+        ('alertmanager', {'resource': 'api-validation', 'service': 'api'}),
+        ('alertmanager', {'resource': 'api-geral', 'service': 'worker'}),
+        ('gcp', {'resource': 'api-geral', 'service': 'api'}),
+        ('alertmanager', {}),
+    ]):
+        alerts.insert_one({
+            'incident_id': str(i), 'name': 'NodeMemoryUsage', 'source': source,
+            'severity': 'Warning', 'severity_number': 3, 'labels': labels,
+            'summary': 'Memory usage', 'update_at': datetime.now(timezone.utc),
+        })
+    context = {}
+    render_template = main.render_template
+
+    def capture(template, **kwargs):
+        context.update(kwargs)
+        return render_template(template, **kwargs)
+
+    monkeypatch.setattr(main, 'render_template', capture)
+    response = client.get('/reports')
+    assert response.status_code == 200
+    assert sorted(r['count'] for r in context['reports']) == [1, 1, 1, 1, 2]
+    assert 'resource=api-validation' in response.get_data(as_text=True)
+    assert 'service=worker' in response.get_data(as_text=True)
+
+
 def test_cannot_remove_someone_elses_ack(client, alerts, open_alert):
     login(client)
     _post_json(client, f"/ack/{open_alert}")
