@@ -54,9 +54,12 @@
     </td>
     <td class="alert-updated">{{ alert.update_at|humanize_time }}</td>
     <td>
-        <div class="labels">
+        <div class="labels"{% if alert.labels %} tabindex="0" role="region" aria-label="{{ _('Labels') }}"{% endif %}>
             {% if alert.labels is mapping %}
-            {% for key, value in alert.labels.items() %}<span class="label-kv"><b>{{ key }}</b>="{{ value }}"</span> {% endfor %}
+            {% for key in ('resource', 'service') if key in alert.labels %}
+            <span class="label-kv label-priority"><b>{{ key }}</b>="{{ alert.labels[key] }}"</span>
+            {% endfor %}
+            {% for key, value in alert.labels.items() if key not in ('resource', 'service') %}<span class="label-kv"><b>{{ key }}</b>="{{ value }}"</span> {% endfor %}
             {% else %}{{ alert.labels }}{% endif %}
         </div>
     </td>
