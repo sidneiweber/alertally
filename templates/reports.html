@@ -39,6 +39,8 @@
     <span class="meta">
         <span class="chip {{ sev_class(n) }}"><span class="dot"></span>{{ r._id.severity|severity_label }}</span>
         <span class="src">{{ source_icon(r.source, with_label=True) }}</span> · {{ fmt_percent(r.count / total) }}
+        {% if r._id.resource %}<span class="mono">resource={{ r._id.resource }}</span>{% endif %}
+        {% if r._id.service %}<span class="mono">service={{ r._id.service }}</span>{% endif %}
     </span>
 </li>
 {%- endmacro %}
