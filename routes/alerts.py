@@ -37,7 +37,7 @@ def alerts_list():
             'ack_by_name': 1,
             'ack_at': 1
         }
-    ).sort('severity_number', -1).limit(100)
+    ).sort([('severity_number', -1), ('update_at', 1)]).limit(100)
     return render_template('alerts.html', alerts=list(results),
                            session=get_session_user(),
                            admin_users=Config.ADMIN_USERS)
