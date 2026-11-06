@@ -134,6 +134,15 @@ body.alertally .table thead th {
     background: var(--al-ink) !important;
     border-bottom: 1px solid var(--al-line);
 }
+/* Preenche a linha com a cor da severidade, inclusive ao passar o mouse. */
+body.alertally .alert-row {
+    --bs-table-bg: color-mix(in srgb, var(--sev) 18%, var(--al-surface));
+    --bs-table-hover-bg: color-mix(in srgb, var(--sev) 26%, var(--al-surface));
+}
+body.alertally .alert-row.sev-critical {
+    --bs-table-bg: color-mix(in srgb, var(--sev) 24%, var(--al-surface));
+    --bs-table-hover-bg: color-mix(in srgb, var(--sev) 32%, var(--al-surface));
+}
 /* faixa de severidade à esquerda da linha */
 body.alertally .alert-row > td:first-child { border-left: 3px solid var(--sev, var(--al-line)); }
 
