@@ -25,6 +25,9 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler(sys.stdout)],
 )
+logging.getLogger('alertally.alertmanager').setLevel(
+    logging.DEBUG if Config.ALERTMANAGER_DEBUG else logging.INFO
+)
 
 
 def check_config():
