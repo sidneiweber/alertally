@@ -147,6 +147,10 @@ body.alertally .alert-summary p { margin: 0; }
 body.alertally .alert-updated { font-family: var(--al-mono); font-size: 13px; color: var(--al-muted); }
 
 body.alertally .labels {
+    /* Keep label-heavy alerts compact without hiding any values. */
+    max-height: 7.5rem;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
     font-family: var(--al-mono);
     font-size: 12px;
     color: var(--al-muted);
@@ -154,9 +158,23 @@ body.alertally .labels {
     white-space: normal;
     overflow-wrap: anywhere;
 }
+body.alertally .labels:focus-visible {
+    outline: 2px solid var(--al-signal);
+    outline-offset: -2px;
+}
 /* cada label inteiro numa linha quando cabe; quebra entre labels, não no meio */
 body.alertally .labels .label-kv { display: inline-block; max-width: 100%; margin-right: 8px; }
 body.alertally .labels b { font-weight: 400; color: var(--al-text-2); }
+body.alertally .labels .label-priority {
+    display: block;
+    margin: 0 0 4px;
+    padding: 3px 6px;
+    border-left: 2px solid var(--al-signal);
+    border-radius: 4px;
+    background: var(--al-surface-2);
+    color: var(--al-text);
+}
+body.alertally .labels .label-priority b { font-weight: 600; color: var(--al-signal); }
 
 body.alertally .alert-actions a { color: var(--al-muted); }
 body.alertally .alert-actions a:hover { color: var(--al-text); }
