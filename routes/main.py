@@ -73,8 +73,7 @@ def reports():
     limit_date = now - timedelta(days=days)
     previous_limit_date = limit_date - timedelta(days=days)
 
-    # Ranking por alerta (nome + severidade); o resumo varia por disparo
-    # (ex.: nome do pod), então vai só o mais recente
+    # Separate resources/services; keep the latest summary for each group.
     reports = list(alerts.aggregate([
         {
             "$match": {
@@ -86,6 +85,9 @@ def reports():
             "$group": {
                 "_id": {
                     "name": "$name",
+                    "source": {"$ifNull": ["$source", ""]},
+                    "resource": {"$ifNull": ["$labels.resource", ""]},
+                    "service": {"$ifNull": ["$labels.service", ""]},
                     "severity": "$severity",
                     "severity_number": "$severity_number"
                 },
