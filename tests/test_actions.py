@@ -1,6 +1,6 @@
 """ACK, remoção de ACK e fechamento de alertas pela interface."""
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -19,6 +19,31 @@ def open_alert(alerts):
 
 def _post_json(client, url, **kw):
     return client.post(url, headers={"Content-Type": "application/json"}, **kw)
+
+
+def test_alerts_sorted_by_severity_then_oldest_update(client, alerts):
+    login(client)
+    now = datetime.now(timezone.utc)
+    for incident_id, severity, age in (
+        ("warning-new", "Warning", 0),
+        ("critical-new", "Critical", 1),
+        ("warning-old", "Warning", 4),
+        ("critical-old", "Critical", 2),
+    ):
+        alerts.insert_one({
+            "incident_id": incident_id, "name": incident_id, "state": "open",
+            "severity": severity, "severity_number": 5 if severity == "Critical" else 3,
+            "summary": "test", "url": "http://x", "labels": {},
+            "update_at": now - timedelta(hours=age),
+        })
+
+    response = client.get("/alerts")
+
+    assert response.status_code == 200
+    assert re.findall(r'<tr class="alert-row [^"]+" id="alert-([^"]+)"',
+                      response.get_data(as_text=True)) == [
+        "critical-old", "critical-new", "warning-old", "warning-new",
+    ]
 
 
 def test_ack_and_unack(client, alerts, open_alert):
