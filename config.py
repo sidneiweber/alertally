@@ -53,6 +53,7 @@ class Config:
 
     # Alertmanager webhook (opcional): se definido, exige "Authorization: Bearer <token>"
     ALERTMANAGER_TOKEN = os.environ.get("ALERTMANAGER_TOKEN")
+    ALERTMANAGER_DEBUG = _env_bool("ALERTMANAGER_DEBUG")
 
     # AWS CloudWatch via SNS (opcional): basic auth que vai na URL da assinatura
     # (https://user:senha@host/aws) e lista de tópicos aceitos, separados por vírgula
