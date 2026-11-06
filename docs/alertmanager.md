@@ -144,14 +144,57 @@ this from a pod in the cluster before enabling the route.
 ### Counting in reports
 
 - Each incident is identified by `fingerprint` + `startsAt`.
+- Different label sets have different fingerprints, even with the same alert name.
+  Resolution matches the same fingerprint and exact `startsAt` used when firing;
+  the status of each alert is read individually, even in a mixed firing/resolved batch.
+- The ranking separates name, severity, source, `resource` and `service`. Missing
+  resource/service labels remain in a group without those dimensions.
 - Re-sends of the same firing (`repeat_interval`, `group_interval`) update the same
   incident, so they **don't inflate** the report counts.
 - When an alert resolves and later fires again, `startsAt` changes and it counts as a
   new firing. This is what the "most triggered alerts" ranking measures.
 - Without `send_resolved: true`, the alert stays open in Alertally until someone
   closes it manually.
+- If a resolved webhook creates a new incident instead of matching an existing
+  one, the server logs `resolved without matching incident` with its fingerprint,
+  start time, resource and service. Compare these with the original firing event.
 
 ## 4. Testing
+
+### Debugging delivery and resolution
+
+Set `ALERTMANAGER_DEBUG=true` in the Alertally environment and restart/recreate the
+application to enable the dedicated `alertally.alertmanager` logger. This does not
+enable Flask debug mode. With Compose, recreate using:
+
+```bash
+docker compose up -d --force-recreate web
+docker compose logs -f web
+```
+
+Each delivery has a generated `request_id`, shared by its batch, per-alert,
+database-result and completion logs. Debug logs include receiver, group key,
+group labels, group status, received count, truncation count, each alert's labels,
+fingerprint, timestamps, individual status, incident ID and database match/insert
+result. They omit authorization headers and annotations. Labels are included;
+turn debugging off after the investigation.
+
+For an incident left open, compare its firing and resolved events:
+
+- No resolved event: check delivery, routing, `send_resolved`, silences/inhibition
+  and notification timing in Alertmanager.
+- Resolved with `inserted=true`: its fingerprint or exact `startsAt` did not match
+  the original incident, or the original firing was never stored.
+- Resolved with `matched_count=1`: the update found the incident. Look for a later
+  firing delivery with the same incident ID if it subsequently reopens.
+
+`group_by` groups notifications; it does not change individual alert identities.
+Mixed batches may have group status `firing` and individual status `resolved`;
+Alertally uses the individual status. `group_interval` can delay updates.
+For this integration, use `send_resolved: true` and `max_alerts: 0` (no truncation)
+in `webhook_configs`. Truncated batches produce a warning even with debug disabled.
+
+### Send a test webhook
 
 Send an alert straight to Alertally, bypassing Alertmanager:
 
