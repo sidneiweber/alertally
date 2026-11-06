@@ -1,0 +1,301 @@
+# Portuguese (Brazil) translations for PROJECT.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-11-02 00:49+0000\n"
+"PO-Revision-Date: 2026-11-02 00:30+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: pt_BR\n"
+"Language-Team: pt_BR <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.16.0\n"
+
+#, python-format
+msgid "%% of firings"
+msgstr "%% dos disparos"
+
+#, python-format
+msgid "%(change)s firing"
+msgid_plural "%(change)s firings"
+msgstr[0] "%(change)s disparo"
+msgstr[1] "%(change)s disparos"
+
+#, python-format
+msgid "%(name)s fired %(num)d time — %(pct)s of the total."
+msgid_plural "%(name)s fired %(num)d times — %(pct)s of the total."
+msgstr[0] "%(name)s disparou %(num)d vez — %(pct)s do total."
+msgstr[1] "%(name)s disparou %(num)d vezes — %(pct)s do total."
+
+msgid "ACK by:"
+msgstr "ACK por:"
+
+msgid "Access denied"
+msgstr "Acesso negado"
+
+msgid "Acknowledge alert"
+msgstr "Reconhecer alerta"
+
+msgid "Acknowledgment removed"
+msgstr "Reconhecimento removido"
+
+msgid "Active alerts"
+msgstr "Alertas ativos"
+
+msgid "Alert"
+msgstr "Alerta"
+
+#, python-format
+msgid "Alert acknowledged by %(name)s"
+msgstr "Alerta reconhecido por %(name)s"
+
+#, python-format
+msgid "Alert already acknowledged by %(name)s"
+msgstr "Alerta já reconhecido por %(name)s"
+
+msgid "Alert not found"
+msgstr "Alerta não encontrado"
+
+msgid "All clear"
+msgstr "Tudo tranquilo"
+
+#, python-format
+msgid "Are you sure you want to close the alert %(name)s?"
+msgstr "Tem certeza de que deseja fechar o alerta %(name)s?"
+
+msgid "Ask an administrator to add your e-mail or domain to the allowed list."
+msgstr "Peça a um administrador para incluir seu e-mail ou domínio na lista de acesso."
+
+msgid "Close"
+msgstr "Fechar"
+
+msgid "Close alert"
+msgstr "Fechar alerta"
+
+msgid "Connection error"
+msgstr "Erro de conexão"
+
+msgid "Critical"
+msgstr "Crítico"
+
+msgid "Daily trend"
+msgstr "Tendência diária"
+
+msgid "Debug"
+msgstr "Debug"
+
+msgid "Distinct alerts"
+msgstr "Alertas distintos"
+
+msgid "Docs"
+msgstr "Docs"
+
+msgid "Email:"
+msgstr "E-mail:"
+
+msgid "Error"
+msgstr "Erro"
+
+msgid "Error processing request"
+msgstr "Erro ao processar a requisição"
+
+msgid "Error!"
+msgstr "Erro!"
+
+msgid "Firings"
+msgstr "Disparos"
+
+#, python-format
+msgid "Firings per day over the last %(num)d day compared to the previous period"
+msgid_plural "Firings per day over the last %(num)d days compared to the previous period"
+msgstr[0] "Disparos por dia no último %(num)d dia comparados ao período anterior"
+msgstr[1] "Disparos por dia nos últimos %(num)d dias comparados ao período anterior"
+
+msgid "Info"
+msgstr "Info"
+
+#, python-format
+msgid "Invalid 'days' parameter. Using %(days)d as default."
+msgstr "Parâmetro 'days' inválido. Usando %(days)d como padrão."
+
+msgid "Labels"
+msgstr "Labels"
+
+msgid "Language"
+msgstr "Idioma"
+
+#, python-format
+msgid "Last %(num)d day"
+msgid_plural "Last %(num)d days"
+msgstr[0] "Último %(num)d dia"
+msgstr[1] "Últimos %(num)d dias"
+
+msgid "Local user"
+msgstr "Usuário local"
+
+msgid "Logout"
+msgstr "Sair"
+
+msgid "Most fired"
+msgstr "Mais acionado"
+
+msgid "Most fired alerts"
+msgstr "Alertas mais acionados"
+
+msgid "No ACK"
+msgstr "Sem ACK"
+
+#, python-format
+msgid "No alerts in the last %(num)d day."
+msgid_plural "No alerts in the last %(num)d days."
+msgstr[0] "Nenhum alerta no último %(num)d dia."
+msgstr[1] "Nenhum alerta nos últimos %(num)d dias."
+
+msgid "No data."
+msgstr "Sem dados."
+
+msgid "No severity"
+msgstr "Sem severidade"
+
+msgid "Only administrators can close alerts"
+msgstr "Só administradores podem fechar alertas"
+
+msgid "Open alert"
+msgstr "Abrir alerta"
+
+msgid "Open menu"
+msgstr "Abrir menu"
+
+msgid "Options"
+msgstr "Opções"
+
+msgid "Period"
+msgstr "Período"
+
+#, python-format
+msgid "Previous %(num)d day"
+msgid_plural "Previous %(num)d days"
+msgstr[0] "%(num)d dia anterior"
+msgstr[1] "%(num)d dias anteriores"
+
+msgid "Ranking"
+msgstr "Ranking"
+
+msgid "Remove ACK"
+msgstr "Remover ACK"
+
+msgid "Report"
+msgstr "Relatório"
+
+msgid "Severity"
+msgstr "Severidade"
+
+#, python-format
+msgid "Show all (%(count)d)"
+msgstr "Ver todos (%(count)d)"
+
+msgid "Sign in with another account"
+msgstr "Entrar com outra conta"
+
+#, python-format
+msgid "Source: %(name)s"
+msgstr "Origem: %(name)s"
+
+msgid "State"
+msgstr "Estado"
+
+msgid "Success!"
+msgstr "Sucesso!"
+
+#, python-format
+msgid "The account %(email)s does not have access to this Alertally."
+msgstr "A conta %(email)s não tem acesso a este Alertally."
+
+#, python-format
+msgid "The top 3 account for %(pct)s of the volume."
+msgstr "O top 3 responde por %(pct)s do volume."
+
+msgid "This account does not have access to this Alertally."
+msgstr "Esta conta não tem acesso a este Alertally."
+
+msgid "Unknown"
+msgstr "Desconhecida"
+
+msgid "Unknown source"
+msgstr "Origem desconhecida"
+
+msgid "Updated at"
+msgstr "Atualizado"
+
+msgid "Vs. previous period"
+msgstr "Vs. período anterior"
+
+msgid "Warning"
+msgstr "Aviso"
+
+msgid "When:"
+msgstr "Quando:"
+
+msgid "You can only remove your own acknowledgment"
+msgstr "Você só pode remover o seu próprio reconhecimento"
+
+msgid "You have successfully acknowledged the alert."
+msgstr "Alerta reconhecido."
+
+msgid "You have successfully closed the alert."
+msgstr "Alerta fechado."
+
+msgid "You have successfully removed the acknowledgment."
+msgstr "Reconhecimento removido."
+
+#, python-format
+msgid "average of %(avg)s per alert"
+msgstr "média de %(avg)s por alerta"
+
+#, python-format
+msgid "before: %(count)s"
+msgstr "antes: %(count)s"
+
+msgid "closed"
+msgstr "fechado"
+
+msgid "firings per alert"
+msgstr "disparos por alerta"
+
+msgid "just now"
+msgstr "agora mesmo"
+
+#, python-format
+msgid "last %(num)d day"
+msgid_plural "last %(num)d days"
+msgstr[0] "último %(num)d dia"
+msgstr[1] "últimos %(num)d dias"
+
+msgid "no active alerts right now."
+msgstr "nenhum alerta ativo no momento."
+
+msgid "no firings in the previous period"
+msgstr "sem disparos no período anterior"
+
+msgid "none in this period"
+msgstr "nenhum no período"
+
+msgid "open"
+msgstr "aberto"
+
+msgid "refreshes every 5s"
+msgstr "atualiza a cada 5s"
+
+msgid "report"
+msgstr "relatório"
+
+msgid "someone"
+msgstr "alguém"
+

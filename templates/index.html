@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="{{ html_lang }}">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <!-- Favicon icon-->
+    <link rel="icon" id="dynamic-favicon" type="image/svg+xml"
+          href="{{url_for('static', filename='images/favicon/alertally.svg')}}">
+
+    <!-- Fontes do kit de marca Alertally -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+
+    <!-- Libs CSS -->
+    <link href="{{url_for('static', filename='libs/prismjs/themes/prism-okaidia.css')}}" rel="stylesheet">
+
+
+    <!-- Theme CSS (Volt) -->
+    <link rel="stylesheet" href="{{url_for('static', filename='css/volt.css')}}">
+    <!-- Tema Alertally (sobrepõe o Volt) -->
+    <link rel="stylesheet" href="{{url_for('static', filename='css/alertally.css')}}">
+    
+    <!-- Custom CSS for table responsiveness -->
+    <style>
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .table {
+            table-layout: fixed;
+            width: 100%;
+            min-width: 1200px;
+        }
+        
+        .table td, .table th {
+            vertical-align: middle;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0.75rem 0.5rem;
+        }
+        
+        /* Specific column widths */
+        .table th:nth-child(1), .table td:nth-child(1) { width: 8%; }   /* Severity */
+        .table th:nth-child(2), .table td:nth-child(2) { width: 15%; }  /* Alert */
+        .table th:nth-child(3), .table td:nth-child(3) { width: 8%; }   /* State */
+        .table th:nth-child(4), .table td:nth-child(4) { width: 10%; }  /* ACK */
+        .table th:nth-child(5), .table td:nth-child(5) { width: 25%; }  /* Docs */
+        .table th:nth-child(6), .table td:nth-child(6) { width: 12%; }  /* Updated At */
+        .table th:nth-child(7), .table td:nth-child(7) { width: 15%; }  /* Labels */
+        .table th:nth-child(8), .table td:nth-child(8) { width: 7%; }   /* Options */
+        
+        /* Text wrapping for specific columns */
+        .table td:nth-child(2), /* Alert name */
+        .table td:nth-child(5)  /* Docs */ {
+            white-space: normal;
+            word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+        
+        /* Better mobile experience */
+        @media (max-width: 768px) {
+            .table-responsive {
+                font-size: 0.875rem;
+            }
+            .table {
+                min-width: 800px;
+            }
+        }
+    </style>
+    
+    <title>Alertally</title>
+</head>
+
+<body class="alertally">
+<div id="db-wrapper">
+    <!-- Mobile top navbar with hamburger -->
+    <nav class="navbar navbar-dark navbar-theme-primary px-4 col-12 d-lg-none">
+        <a class="navbar-brand me-lg-5 d-flex align-items-center gap-2" href="/">
+            <img src="{{ url_for('static', filename='images/favicon/alertally.svg') }}" width="28" height="28" alt=""/>
+            <span class="wordmark text-white">alertally</span>
+        </a>
+        <div class="d-flex align-items-center">
+            <button class="navbar-toggler d-lg-none collapsed" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false"
+                    aria-label="{{ _('Open menu') }}">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+        </div>
+    </nav>
+    <!-- Sidebar (Volt) -->
+    {% include 'includes/sidebar.html' %}
+    <!-- page content -->
+    <main class="content">
+        {% include 'includes/header.html' %}
+        <!-- Container fluid -->
+        <div class="container-fluid px-0 py-4">
+            {% with messages = get_flashed_messages()%}
+            {% if messages%}
+            {% for message in messages%}
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <strong>{{ _('Success!') }}</strong> {{message}}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ _('Close') }}">
+                    <span aria-hidden="true"></span>
+                </button>
+            </div>
+            {%endfor%}
+            {%endif%}
+            {%endwith%}
+
+            <div class="page-head mb-3">
+                <h1>{{ _('Active alerts') }}</h1>
+                <span class="eyebrow">// GCP Monitoring · Alertmanager · AWS CloudWatch · {{ _('refreshes every 5s') }}</span>
+            </div>
+
+            <div class="row">
+                <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12">
+                    <div class="table-responsive alerts-card">
+                        <table class="table table-hover">
+                            <thead>
+                            <tr>
+                                <th scope="col">{{ _('Severity') }}</th>
+                                <th scope="col">{{ _('Alert') }}</th>
+                                <th scope="col">{{ _('State') }}</th>
+                                <th scope="col">ACK</th>
+                                <th scope="col">{{ _('Docs') }}</th>
+                                <th scope="col">{{ _('Updated at') }}</th>
+                                <th scope="col">{{ _('Labels') }}</th>
+                                <th scope="col">{{ _('Options') }}</th>
+                            </tr>
+                            </thead>
+                            <tbody hx-get="/alerts"
+                                   hx-trigger="load every 5s"
+                                   hx-swap="outerHTML">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+</div>
+<!-- Scripts -->
+<!-- Libs JS -->
+<script src="{{url_for('static', filename='libs/bootstrap/dist/js/bootstrap.bundle.min.js')}}"></script>
+<script src="{{url_for('static', filename='libs/feather-icons/dist/feather.min.js')}}"></script>
+<script src="{{url_for('static', filename='libs/prismjs/prism.js')}}"></script>
+<script src="{{url_for('static', filename='libs/prismjs/plugins/toolbar/prism-toolbar.min.js')}}"></script>
+<script
+        src="{{url_for('static', filename='libs/prismjs/plugins/copy-to-clipboard/prism-copy-to-clipboard.min.js')}}"></script>
+<script type="module" src="https://md-block.verou.me/md-block.js"></script>
+<script src="https://unpkg.com/htmx.org@1.9.5"></script>
+
+<script>
+    // Ícones do cabeçalho e da barra lateral
+    feather.replace();
+
+    function atualizarFaviconComBadge(count) {
+        const canvas = document.createElement("canvas");
+        const size = 42;
+        canvas.width = canvas.height = size;
+        const ctx = canvas.getContext("2d");
+
+        const img = new Image();
+        img.src = "/static/images/favicon/alertally.svg";
+        img.onload = () => {
+            ctx.drawImage(img, 0, 0, size, size);
+
+            if (count > 0) {
+                ctx.beginPath();
+                ctx.arc(size - 16, 16, 14, 0, 2 * Math.PI);
+                ctx.fillStyle = "#F25F4C";
+                ctx.fill();
+
+                ctx.fillStyle = "white";
+                ctx.font = "bold 20px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(
+                    count > 99 ? "99+" : count,
+                    size - 16,
+                    16
+                );
+            }
+
+            const favicon = document.getElementById("dynamic-favicon");
+            favicon.href = canvas.toDataURL("image/png");
+        };
+    }
+</script>
+
+<script>
+    let alertaAtual = null;
+
+    function atualizarBadge() {
+        fetch('/count')
+            .then(res => res.json())
+            .then(count => {
+                if (count !== alertaAtual) {
+                    alertaAtual = count;
+                    atualizarFaviconComBadge(count);
+
+                    if (count > 0) {
+                        document.title = `(${count}) Alertally`;
+                    } else {
+                        document.title = 'Alertally';
+                    }
+                }
+            })
+            .catch(err => {
+                console.error("Error fetching alerts:", err);
+            });
+    }
+
+    atualizarBadge();
+    setInterval(atualizarBadge, 60000);
+
+    // Inicializar popovers quando a página carrega
+    initializePopovers();
+</script>
+
+<script>
+    function initializePopovers() {
+        // Destruir popovers existentes para evitar duplicatas
+        const existingPopovers = document.querySelectorAll('[data-bs-toggle="popover"]');
+        existingPopovers.forEach(element => {
+            const popoverInstance = bootstrap.Popover.getInstance(element);
+            if (popoverInstance) {
+                popoverInstance.dispose();
+            }
+        });
+
+        // Inicializar novos popovers
+        const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+        popoverTriggerList.map(function (popoverTriggerEl) {
+            return new bootstrap.Popover(popoverTriggerEl);
+        });
+    }
+</script>
+
+<script>
+    // Textos traduzidos usados pelo JS
+    const I18N = {{ {
+        'success': _('Success!'),
+        'error': _('Error!'),
+        'requestError': _('Error processing request'),
+        'connectionError': _('Connection error'),
+        'ackBy': _('ACK by:'),
+        'email': _('Email:'),
+        'when': _('When:'),
+        'justNow': _('just now'),
+        'noAck': _('No ACK'),
+        'removeAck': _('Remove ACK'),
+        'ackAlert': _('Acknowledge alert'),
+    }|tojson }};
+
+    function toggleAck(incidentId, action) {
+        const url = `/${action}/${incidentId}`;
+        const link = document.querySelector(`#ack-buttons-${incidentId} a`);
+
+        // Desabilitar link durante a requisição
+        if (link) {
+            link.style.pointerEvents = 'none';
+            link.style.opacity = '0.5';
+        }
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Atualizar a interface sem recarregar a página
+                updateAckStatus(incidentId, action, data);
+
+                // Mostrar mensagem de sucesso
+                showToast(data.message, 'success');
+            } else {
+                showToast(data.error || I18N.requestError, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast(I18N.connectionError, 'error');
+        })
+        .finally(() => {
+            // Reabilitar link
+            if (link) {
+                link.style.pointerEvents = 'auto';
+                link.style.opacity = '1';
+            }
+        });
+    }
+
+    function updateAckStatus(incidentId, action, data) {
+        const statusDiv = document.getElementById(`ack-status-${incidentId}`);
+        const buttonsDiv = document.getElementById(`ack-buttons-${incidentId}`);
+
+        if (action === 'ack') {
+            // Atualizar status para mostrar ACK com popover
+            statusDiv.innerHTML = `
+                <span class="chip ack"
+                      data-bs-toggle="popover"
+                      data-bs-placement="top"
+                      data-bs-trigger="hover"
+                      data-bs-html="true"
+                      data-bs-content="<strong>${I18N.ackBy}</strong> ${data.ack_by_name}<br><strong>${I18N.email}</strong> ${data.ack_by}<br><strong>${I18N.when}</strong> ${I18N.justNow}"
+                      style="cursor: help;">
+                    <i data-feather="check-circle" class="icon-xs"></i>
+                    ACK
+                </span>
+            `;
+
+            // Atualizar botão para remover ACK (se for o mesmo usuário)
+            buttonsDiv.innerHTML = `
+                <a href="#"
+                   onclick="toggleAck('${incidentId}', 'unack'); return false;"
+                   title="${I18N.removeAck}">
+                    <i class="me-1 icon-xs" data-feather="x-circle"></i>
+                </a>
+            `;
+        } else {
+            // Atualizar status para mostrar sem ACK
+            statusDiv.innerHTML = `
+                <span class="chip no-ack">
+                    <i data-feather="circle" class="icon-xs"></i>
+                    ${I18N.noAck}
+                </span>
+            `;
+
+            // Atualizar botão para fazer ACK
+            buttonsDiv.innerHTML = `
+                <a href="#"
+                   onclick="toggleAck('${incidentId}', 'ack'); return false;"
+                   title="${I18N.ackAlert}">
+                    <i class="me-1 icon-xs" data-feather="check-circle"></i>
+                </a>
+            `;
+        }
+
+        // Reinicializar os ícones do Feather e popovers
+        feather.replace();
+        initializePopovers();
+    }
+
+    function showToast(message, type) {
+        // Criar toast simples
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        toast.innerHTML = `
+            <strong>${type === 'success' ? I18N.success : I18N.error}</strong> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ _('Close') }}"></button>
+        `;
+
+        document.body.appendChild(toast);
+
+        // Remover automaticamente após 5 segundos
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 5000);
+    }
+</script>
+
+<script>
+    document.body.addEventListener('htmx:afterSwap', (event) => {
+        if (event.target.id === "alerts-tbody") {
+            // Feather Icons
+            if (feather) {
+                feather.replace();
+            }
+
+            // Inicializar todos os popovers no tbody recém-atualizado
+            const popoverTriggerList = event.target.querySelectorAll('[data-bs-toggle="popover"]');
+            popoverTriggerList.forEach(el => new bootstrap.Popover(el));
+        }
+    });
+</script>
+</body>
+
+</html>

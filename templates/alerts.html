@@ -1,0 +1,109 @@
+{% from 'includes/source_icon.html' import source_icon %}
+<tbody id="alerts-tbody"
+       hx-get="/alerts"
+       hx-trigger="every 5s"
+       hx-swap="outerHTML">
+{% if alerts %}
+{% for alert in alerts %}
+{% if alert.severity_number == 5 %}
+{% set sev_class = "sev-critical" %}{% set sev_icon = "alert-octagon" %}{% set sev_solid = True %}
+{% elif alert.severity_number == 4 %}
+{% set sev_class = "sev-error" %}{% set sev_icon = "alert-triangle" %}{% set sev_solid = False %}
+{% elif alert.severity_number == 3 %}
+{% set sev_class = "sev-warning" %}{% set sev_icon = "alert-triangle" %}{% set sev_solid = False %}
+{% elif alert.severity_number == 2 %}
+{% set sev_class = "sev-info" %}{% set sev_icon = "info" %}{% set sev_solid = False %}
+{% else %}
+{% set sev_class = "sev-muted" %}{% set sev_icon = "help-circle" %}{% set sev_solid = False %}
+{% endif %}
+<tr class="alert-row {{ sev_class }}" id="alert-{{ alert.incident_id }}">
+    <td>
+        <span class="sev-badge{% if sev_solid %} solid{% endif %}">
+            <i data-feather="{{ sev_icon }}" class="icon-xs"></i>{{ alert.severity|severity_label }}
+        </span>
+    </td>
+    <td>
+        <div class="alert-name">{{ source_icon(alert.source) }}<span>{{ alert.name }}</span></div>
+    </td>
+    <td><span class="chip"><span class="dot"></span>{{ alert.state|state_label }}</span></td>
+    <td>
+        <div id="ack-status-{{ alert.incident_id }}">
+            {% if alert.ack_by %}
+            <span class="chip ack"
+                  data-bs-toggle="popover"
+                  data-bs-placement="top"
+                  data-bs-trigger="hover"
+                  data-bs-html="true"
+                  data-bs-content="<strong>{{ _('ACK by:') }}</strong> {{ alert.ack_by_name }}<br><strong>{{ _('Email:') }}</strong> {{ alert.ack_by }}<br><strong>{{ _('When:') }}</strong> {{ alert.ack_at|humanize_time }}"
+                  style="cursor: help;">
+                <i data-feather="check-circle" class="icon-xs"></i>
+                ACK
+            </span>
+            {% else %}
+            <span class="chip no-ack">
+                <i data-feather="circle" class="icon-xs"></i>
+                {{ _('No ACK') }}
+            </span>
+            {% endif %}
+        </div>
+    </td>
+    <td class="alert-summary">
+        <md-block>
+            {{ alert.summary }}
+        </md-block>
+    </td>
+    <td class="alert-updated">{{ alert.update_at|humanize_time }}</td>
+    <td>
+        <div class="labels">
+            {% if alert.labels is mapping %}
+            {% for key, value in alert.labels.items() %}<span class="label-kv"><b>{{ key }}</b>="{{ value }}"</span> {% endfor %}
+            {% else %}{{ alert.labels }}{% endif %}
+        </div>
+    </td>
+    <td>
+        <div class="d-flex align-items-center gap-1 alert-actions">
+            <a href="{{ alert.url }}" title="{{ _('Open alert') }}" target="_blank">
+                <i class="me-1 icon-small" data-feather="external-link"></i>
+            </a>
+
+            <div id="ack-buttons-{{ alert.incident_id }}">
+                {% if alert.ack_by %}
+                {% if alert.ack_by == session.email or session.email in admin_users %}
+                <a href="#"
+                   onclick="toggleAck('{{ alert.incident_id }}', 'unack'); return false;"
+                   title="{{ _('Remove ACK') }}">
+                    <i class="me-1 icon-small" data-feather="x-circle"></i>
+                </a>
+                {% endif %}
+                {% else %}
+                <a href="#"
+                   onclick="toggleAck('{{ alert.incident_id }}', 'ack'); return false;"
+                   title="{{ _('Acknowledge alert') }}">
+                    <i class="me-1 icon-small" data-feather="check-circle"></i>
+                </a>
+                {% endif %}
+            </div>
+
+            {% if session.email in admin_users %}
+            <form method="post" action="/close/{{ alert.incident_id }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <a href="#" class="danger"
+                   onclick='if (confirm({{ _("Are you sure you want to close the alert %(name)s?", name=alert.name|safe)|tojson }})) { this.closest("form").submit(); } return false;'
+                   title="{{ _('Close alert') }}">
+                    <i class="me-1 icon-small" data-feather="trash-2"></i>
+                </a>
+            </form>
+            {% endif %}
+        </div>
+    </td>
+</tr>
+{% endfor %}
+{% else %}
+<tr>
+    <td colspan="8" class="text-center empty-state">
+        <i data-feather="check-circle" class="icon-sm me-2"></i>
+        <strong>{{ _('All clear') }}</strong> — {{ _('no active alerts right now.') }}
+    </td>
+</tr>
+{% endif %}
+</tbody>

@@ -1,0 +1,38 @@
+# Ambiente de desenvolvimento local.
+#   docker compose -f docker-compose.dev.yaml up --build
+# App em http://localhost:5000 (sem login do Google), Mongo em localhost:27017.
+services:
+  web:
+    build: .
+    command: flask --app app run --host 0.0.0.0 --port 5000 --debug
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app:z        # recarrega o código ao salvar (:z = SELinux)
+    environment:
+      - MONGO_URL=mongo
+      - DISABLE_GOOGLE_LOGIN=true
+      - OAUTHLIB_INSECURE_TRANSPORT=1
+      - PYTHONUNBUFFERED=1
+    # Variáveis opcionais (ALERTMANAGER_TOKEN, AWS_SNS_*...)
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  mongo:
+    image: percona/percona-server-mongodb:8.0-multi
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-dev-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mongo-dev-data:

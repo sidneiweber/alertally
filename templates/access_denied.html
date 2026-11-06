@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="{{ html_lang }}">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/favicon/alertally.svg') }}">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/volt.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/alertally.css') }}">
+
+    <title>{{ _('Access denied') }} · Alertally</title>
+</head>
+
+<body class="alertally">
+<main class="access-denied">
+    <div class="access-denied-card">
+        <img src="{{ url_for('static', filename='images/favicon/alertally.svg') }}" width="40" height="40" alt="">
+        <span class="eyebrow">// 403</span>
+        <h1>{{ _('Access denied') }}</h1>
+        <p>
+            {% if email %}
+            {{ _('The account %(email)s does not have access to this Alertally.',
+                 email=('<strong class="mono">'|safe) ~ email ~ ('</strong>'|safe)) }}
+            {% else %}
+            {{ _('This account does not have access to this Alertally.') }}
+            {% endif %}
+        </p>
+        <p class="muted">{{ _('Ask an administrator to add your e-mail or domain to the allowed list.') }}</p>
+        <a class="btn btn-signal" href="{{ url_for('auth.logout') }}">{{ _('Sign in with another account') }}</a>
+    </div>
+</main>
+</body>
+
+</html>

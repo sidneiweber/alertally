@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="{{ html_lang }}">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="icon" id="dynamic-favicon" type="image/svg+xml"
+          href="{{url_for('static', filename='images/favicon/alertally.svg')}}">
+
+    <!-- Fontes do kit de marca Alertally -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+
+
+    <!-- Theme CSS (Volt) + tema Alertally -->
+    <link rel="stylesheet" href="{{url_for('static', filename='css/volt.css')}}">
+    <link rel="stylesheet" href="{{url_for('static', filename='css/alertally.css')}}">
+
+    <title>{{ _('Report') }} · Alertally</title>
+</head>
+
+{% macro sev_class(n) -%}
+{%- if n == 5 %}sev-critical{% elif n == 4 %}sev-error{% elif n == 3 %}sev-warning{% elif n == 2 %}sev-info{% else %}sev-muted{% endif -%}
+{%- endmacro %}
+{% macro sev_icon(n) -%}
+{%- if n == 5 %}alert-octagon{% elif n in [3, 4] %}alert-triangle{% elif n == 2 %}info{% else %}help-circle{% endif -%}
+{%- endmacro %}
+{% from 'includes/source_icon.html' import source_icon %}
+
+{% macro ranking_row(r, rank, top_count, total) -%}
+{%- set n = r._id.severity_number -%}
+<li class="ranking-row{% if rank == 1 %} top{% endif %}" title="{{ r.summary }}">
+    <span class="rank mono">{{ rank }}</span>
+    <span class="name mono">{{ r._id.name }}</span>
+    <span class="bar" aria-hidden="true"><i style="width: {{ (r.count / top_count * 100)|round(1) }}%"></i></span>
+    <span class="count mono">{{ r.count }}</span>
+    <span class="meta">
+        <span class="chip {{ sev_class(n) }}"><span class="dot"></span>{{ r._id.severity|severity_label }}</span>
+        <span class="src">{{ source_icon(r.source, with_label=True) }}</span> · {{ fmt_percent(r.count / total) }}
+    </span>
+</li>
+{%- endmacro %}
+
+{% set total = reports|sum(attribute='count') %}
+{% set top_count = reports[0].count if reports else 0 %}
+{% set pc = period_comparison %}
+
+<body class="alertally">
+<div id="db-wrapper">
+    <!-- Mobile top navbar with hamburger -->
+    <nav class="navbar navbar-dark navbar-theme-primary px-4 col-12 d-lg-none">
+        <a class="navbar-brand me-lg-5 d-flex align-items-center gap-2" href="/">
+            <img src="{{ url_for('static', filename='images/favicon/alertally.svg') }}" width="28" height="28" alt=""/>
+            <span class="wordmark text-white">alertally</span>
+        </a>
+        <div class="d-flex align-items-center">
+            <button class="navbar-toggler d-lg-none collapsed" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false"
+                    aria-label="{{ _('Open menu') }}">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+        </div>
+    </nav>
+    {% include 'includes/sidebar.html' %}
+
+    <main class="content">
+        {% include 'includes/header.html' %}
+
+        <div class="container-fluid px-0 py-4">
+            {% if error %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                {{ error }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ _('Close') }}"></button>
+            </div>
+            {% endif %}
+
+            <!-- Cabeçalho + período -->
+            <div class="page-head mb-4">
+                <div>
+                    <span class="eyebrow">// {{ _('report') }} · GCP Monitoring · Alertmanager · AWS CloudWatch</span>
+                    <h1>{{ _('Most fired alerts') }}</h1>
+                </div>
+                <nav class="period-switch" aria-label="{{ _('Period') }}">
+                    {% for value in options %}
+                    <a href="/reports?days={{ value }}"
+                       class="{% if days == value %}active{% endif %}"
+                       {% if days == value %}aria-current="page"{% endif %}>{{ value }}d</a>
+                    {% endfor %}
+                </nav>
+            </div>
+
+            <!-- KPIs -->
+            <div class="kpi-grid mb-3">
+                <div class="kpi-card">
+                    <span class="kpi-label">{{ _('Firings') }}</span>
+                    <b class="kpi-value">{{ fmt_number(pc.current_count) }}</b>
+                    <span class="kpi-sub">{{ ngettext('last %(num)d day', 'last %(num)d days', days) }}</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">{{ _('Vs. previous period') }}</span>
+                    {% if pc.previous_count > 0 %}
+                    <b class="kpi-value {% if pc.is_increase %}trend-up{% elif pc.change_amount < 0 %}trend-down{% endif %}">
+                        <i data-feather="{% if pc.is_increase %}trending-up{% elif pc.change_amount < 0 %}trending-down{% else %}minus{% endif %}"
+                           aria-hidden="true"></i>{% if pc.is_increase %}+{% endif %}{{ fmt_percent(pc.change_percent / 100, 1) }}
+                    </b>
+                    <span class="kpi-sub">{{ ngettext('%(change)s firing', '%(change)s firings', pc.change_amount|abs,
+                        change=('+' if pc.is_increase else '') ~ fmt_number(pc.change_amount)) }}
+                        · {{ _('before: %(count)s', count=fmt_number(pc.previous_count)) }}</span>
+                    {% else %}
+                    <b class="kpi-value muted">—</b>
+                    <span class="kpi-sub">{{ _('no firings in the previous period') }}</span>
+                    {% endif %}
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">{{ _('Distinct alerts') }}</span>
+                    <b class="kpi-value">{{ reports|length }}</b>
+                    <span class="kpi-sub">
+                        {% if reports %}{{ _('average of %(avg)s per alert', avg=fmt_number(total / reports|length, 1)) }}{% else %}{{ _('none in this period') }}{% endif %}
+                    </span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">{{ _('Most fired') }}</span>
+                    <b class="kpi-value signal">{{ top_count }}</b>
+                    <span class="kpi-sub mono text-truncate" title="{{ reports[0]._id.name if reports else '' }}">
+                        {{ reports[0]._id.name if reports else '—' }}
+                    </span>
+                </div>
+            </div>
+
+            {% if reports %}
+            {% set top3 = reports[:3]|sum(attribute='count') %}
+            <p class="report-insight mb-4">
+                {% if reports|length > 3 %}
+                {{ _('The top 3 account for %(pct)s of the volume.',
+                     pct=('<strong>'|safe) ~ fmt_percent(top3 / total) ~ ('</strong>'|safe)) }}
+                {% endif %}
+                {{ ngettext('%(name)s fired %(num)d time — %(pct)s of the total.',
+                            '%(name)s fired %(num)d times — %(pct)s of the total.', top_count,
+                            name=('<span class="mono signal">'|safe) ~ reports[0]._id.name ~ ('</span>'|safe),
+                            pct=fmt_percent(top_count / total)) }}
+            </p>
+            {% endif %}
+
+            <div class="row g-3 mb-3">
+                <!-- Ranking -->
+                <div class="col-xl-8 col-12">
+                    <section class="report-card h-100" aria-labelledby="ranking-title">
+                        <header class="report-card-head">
+                            <h2 id="ranking-title">{{ _('Ranking') }}</h2>
+                            <span class="eyebrow">{{ _('firings per alert') }}</span>
+                        </header>
+
+                        {% if reports %}
+                        <ol class="ranking">
+                            {% for r in reports[:10] %}
+                            {{ ranking_row(r, loop.index, top_count, total) }}
+                            {% endfor %}
+                        </ol>
+                        {% if reports|length > 10 %}
+                        <details class="ranking-more">
+                            <summary>{{ _('Show all (%(count)d)', count=reports|length) }}</summary>
+                            <ol class="ranking" start="11">
+                                {% for r in reports[10:] %}
+                                {{ ranking_row(r, loop.index + 10, top_count, total) }}
+                                {% endfor %}
+                            </ol>
+                        </details>
+                        {% endif %}
+                        {% else %}
+                        <p class="empty-state text-center mb-0">{{ ngettext('No alerts in the last %(num)d day.', 'No alerts in the last %(num)d days.', days) }}</p>
+                        {% endif %}
+                    </section>
+                </div>
+
+                <!-- Severidade -->
+                <div class="col-xl-4 col-12">
+                    <section class="report-card h-100" aria-labelledby="sev-title">
+                        <header class="report-card-head">
+                            <h2 id="sev-title">{{ _('Severity') }}</h2>
+                            <span class="eyebrow">{{ _('%% of firings') }}</span>
+                        </header>
+
+                        {% if severity_reports %}
+                        {% set sev_total = severity_reports|sum(attribute='count') %}
+                        <div class="sev-stack" aria-hidden="true">
+                            {% for s in severity_reports %}
+                            <i class="{{ sev_class(s._id.severity_number) }}"
+                               style="flex: {{ s.count }}"></i>
+                            {% endfor %}
+                        </div>
+                        <ul class="sev-list">
+                            {% for s in severity_reports %}
+                            {% set n = s._id.severity_number %}
+                            <li class="{{ sev_class(n) }}">
+                                <span class="sev-badge{% if n == 5 %} solid{% endif %}">
+                                    <i data-feather="{{ sev_icon(n) }}" aria-hidden="true"></i>{{ s._id.severity|severity_label }}
+                                </span>
+                                <span class="mono count">{{ s.count }}</span>
+                                <span class="mono pct">{{ fmt_percent(s.count / sev_total) }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="empty-state text-center mb-0">{{ _('No data.') }}</p>
+                        {% endif %}
+                    </section>
+                </div>
+            </div>
+
+            <!-- Tendência -->
+            <section class="report-card" aria-labelledby="trend-title">
+                <header class="report-card-head">
+                    <h2 id="trend-title">{{ _('Daily trend') }}</h2>
+                    <span class="legend">
+                        <span><i class="line current" aria-hidden="true"></i>{{ ngettext('Last %(num)d day', 'Last %(num)d days', days) }}</span>
+                        <span><i class="line previous" aria-hidden="true"></i>{{ ngettext('Previous %(num)d day', 'Previous %(num)d days', days) }}</span>
+                    </span>
+                </header>
+                <div class="trend-chart">
+                    <canvas id="trendChart" role="img"
+                            aria-label="{{ ngettext('Firings per day over the last %(num)d day compared to the previous period', 'Firings per day over the last %(num)d days compared to the previous period', days) }}"></canvas>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<!-- Scripts -->
+<script src="{{url_for('static', filename='libs/bootstrap/dist/js/bootstrap.bundle.min.js')}}"></script>
+<script src="{{url_for('static', filename='libs/feather-icons/dist/feather.min.js')}}"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+    // Textos traduzidos usados pelo JS
+    const I18N = {{ {
+        'title': _('Report') ~ ' · Alertally',
+        'current': ngettext('Last %(num)d day', 'Last %(num)d days', days),
+        'previous': ngettext('Previous %(num)d day', 'Previous %(num)d days', days),
+    }|tojson }};
+
+    feather.replace();
+
+    // Badge de alertas abertos no favicon e no título
+    function atualizarFaviconComBadge(count) {
+        const canvas = document.createElement("canvas");
+        const size = 42;
+        canvas.width = canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        const img = new Image();
+        img.src = "/static/images/favicon/alertally.svg";
+        img.onload = () => {
+            ctx.drawImage(img, 0, 0, size, size);
+            if (count > 0) {
+                ctx.beginPath();
+                ctx.arc(size - 16, 16, 14, 0, 2 * Math.PI);
+                ctx.fillStyle = "#F25F4C";
+                ctx.fill();
+                ctx.fillStyle = "white";
+                ctx.font = "bold 20px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(count > 99 ? "99+" : count, size - 16, 16);
+            }
+            document.getElementById("dynamic-favicon").href = canvas.toDataURL("image/png");
+        };
+    }
+
+    let alertaAtual = null;
+    function atualizarBadge() {
+        fetch('/count')
+            .then(res => res.json())
+            .then(count => {
+                if (count === alertaAtual) return;
+                alertaAtual = count;
+                atualizarFaviconComBadge(count);
+                document.title = count > 0 ? `(${count}) ${I18N.title}` : I18N.title;
+            })
+            .catch(err => console.error("Error fetching alerts:", err));
+    }
+    atualizarBadge();
+    setInterval(atualizarBadge, 60000);
+</script>
+
+<script>
+    // Tendência diária: período atual vs. anterior (dados reais dos dois)
+    const periodComparison = {{ period_comparison|tojson }};
+    const daily = periodComparison.daily_alerts || [];
+    const previous = periodComparison.previous_daily_alerts || [];
+
+    const css = getComputedStyle(document.documentElement);
+    const tok = name => css.getPropertyValue(name).trim();
+
+    Chart.defaults.font.family = tok('--al-body');
+    Chart.defaults.color = tok('--al-muted');
+
+    // dd/mm ou mm/dd conforme o idioma da página
+    const dayFmt = new Intl.DateTimeFormat(document.documentElement.lang, {day: '2-digit', month: '2-digit'});
+
+    new Chart(document.getElementById('trendChart'), {
+        type: 'line',
+        data: {
+            labels: daily.map(d => dayFmt.format(new Date(d._id.year, d._id.month - 1, d._id.day))),
+            datasets: [{
+                label: I18N.current,
+                data: daily.map(d => d.count),
+                borderColor: tok('--al-text'),
+                backgroundColor: 'rgba(230, 237, 243, .06)',
+                fill: true,
+                borderWidth: 2,
+                tension: .3,
+                pointRadius: 3,
+                pointBackgroundColor: tok('--al-text'),
+                pointBorderWidth: 0
+            }, {
+                label: I18N.previous,
+                data: previous,
+                borderColor: tok('--al-muted'),
+                borderDash: [5, 5],
+                borderWidth: 1.5,
+                tension: .3,
+                pointRadius: 0,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {mode: 'index', intersect: false},
+            plugins: {
+                legend: {display: false},
+                tooltip: {
+                    backgroundColor: tok('--al-surface-2'),
+                    borderColor: tok('--al-line'),
+                    borderWidth: 1,
+                    titleColor: tok('--al-text'),
+                    bodyColor: tok('--al-text-2'),
+                    titleFont: {family: tok('--al-mono')},
+                    padding: 10,
+                    callbacks: {label: c => ` ${c.dataset.label}: ${c.parsed.y}`}
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {precision: 0, font: {family: tok('--al-mono'), size: 11}},
+                    grid: {color: tok('--al-line')},
+                    border: {display: false}
+                },
+                x: {
+                    ticks: {maxTicksLimit: 12, font: {family: tok('--al-mono'), size: 11}},
+                    grid: {display: false},
+                    border: {color: tok('--al-line')}
+                }
+            }
+        }
+    });
+</script>
+</body>
+
+</html>

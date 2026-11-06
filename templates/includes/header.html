@@ -1,0 +1,58 @@
+<!-- Header (Volt top navbar) -->
+<nav class="navbar navbar-top navbar-expand navbar-dashboard navbar-dark ps-0 pe-2 pb-0">
+    <div class="container-fluid px-0">
+        <div class="d-flex justify-content-end w-100" id="navbarSupportedContent">
+            <!-- Navbar links -->
+            <ul class="navbar-nav align-items-center">
+                <!-- Seletor de idioma -->
+                <li class="nav-item dropdown lang-switch">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center gap-1" href="#" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false"
+                       aria-label="{{ _('Language') }}: {{ languages[current_lang] }}" title="{{ _('Language') }}">
+                        <svg class="lang-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                        </svg>
+                        <span class="lang-code">{{ current_lang.split('_')[0] }}</span>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-end mt-2 py-1">
+                        {% for code, name in languages.items() %}
+                        <a class="dropdown-item d-flex align-items-center justify-content-between gap-3{% if code == current_lang %} active{% endif %}"
+                           href="{{ url_for('main.set_language', code=code) }}" lang="{{ code|replace('_', '-') }}"
+                           {% if code == current_lang %}aria-current="true"{% endif %}>
+                            {{ name }}
+                            {% if code == current_lang %}
+                            <svg class="lang-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            {% endif %}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </li>
+                <li class="nav-item dropdown ms-3">
+                    <a class="nav-link dropdown-toggle pt-1 px-0" href="#" role="button" data-bs-toggle="dropdown"
+                       aria-expanded="false">
+                        <div class="media d-flex align-items-center">
+                            <img class="avatar rounded-circle" alt="avatar"
+                                 src="{{ session.picture or url_for('static', filename='images/user.png') }}">
+                            <div class="media-body ms-2 text-dark align-items-center d-none d-lg-block">
+                                <span class="mb-0 font-small fw-bold text-gray-900">{{ session.name or _('Local user') }}</span>
+                            </div>
+                        </div>
+                    </a>
+                    <div class="dropdown-menu dashboard-dropdown dropdown-menu-end mt-2 py-1">
+                        <div class="px-3 py-2 d-lg-none">
+                            <div class="small text-gray-600">{{ session.email or 'local@example.com' }}</div>
+                        </div>
+                        <a class="dropdown-item d-flex align-items-center" href="/logout">
+                            <svg class="dropdown-icon text-danger me-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                            {{ _('Logout') }}
+                        </a>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+    
+</nav>

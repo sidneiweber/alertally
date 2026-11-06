@@ -1,0 +1,12 @@
+{# Ícone da origem do alerta. Uso: {% from 'includes/source_icon.html' import source_icon %} #}
+{% set SOURCES = {
+    'gcp': ('src-gcp', 'GCP Monitoring'),
+    'alertmanager': ('src-alertmanager', 'Alertmanager'),
+    'aws': ('src-aws', 'AWS CloudWatch'),
+} %}
+
+{% macro source_icon(source, with_label=False) -%}
+{%- set cls, label = SOURCES.get(source, ('src-unknown', source or _('Unknown source'))) -%}
+<span class="src-icon {{ cls }}" role="img" aria-label="{{ _('Source: %(name)s', name=label) }}" title="{{ label }}"></span>
+{%- if with_label %}<span class="src-label">{{ label }}</span>{% endif -%}
+{%- endmacro %}

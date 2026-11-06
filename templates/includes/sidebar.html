@@ -1,0 +1,31 @@
+{% set path = request.path %}
+<nav id="sidebarMenu" class="sidebar d-lg-block bg-gray-800 text-white collapse" data-simplebar>
+    <div class="sidebar-inner px-4 pt-3">
+        <ul class="nav flex-column pt-3 pt-md-0">
+            <li class="nav-item">
+                <a href="/" class="nav-link d-flex align-items-center brand-link">
+          <span class="sidebar-icon">
+            <img src="{{ url_for('static', filename='images/favicon/alertally.svg') }}" height="28" width="28" alt="">
+          </span>
+                    <span class="ms-2 sidebar-text wordmark" style="font-weight:700">alertally</span>
+                </a>
+            </li>
+            <li class="nav-item{% if path == '/' %} active{% endif %}">
+                <a href="/" class="nav-link"{% if path == '/' %} aria-current="page"{% endif %}>
+          <span class="sidebar-icon">
+            <i data-feather="home" class="icon icon-xs me-2"></i>
+          </span>
+                    <span class="sidebar-text">Home</span>
+                </a>
+            </li>
+            <li class="nav-item{% if path == '/reports' %} active{% endif %}">
+                <a href="/reports" class="nav-link"{% if path == '/reports' %} aria-current="page"{% endif %}>
+          <span class="sidebar-icon">
+            <i data-feather="bar-chart-2" class="icon icon-xs me-2"></i>
+          </span>
+                    <span class="sidebar-text">Reports</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+</nav>

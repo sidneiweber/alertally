@@ -1,0 +1,22 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Configuração local e segredos
+.env
+docker-compose.prod.yaml
+*.pem
+*.key
+*.crt
+*service-account*.json
+*-credentials*.json
+
+# Dados locais do Docker
+mongo/
+letsencrypt/
+
+# Gerado pelo pybabel extract
+messages.pot

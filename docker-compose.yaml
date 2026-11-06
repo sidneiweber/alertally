@@ -1,0 +1,31 @@
+# Alertally + MongoDB. Configuração em .env (veja .env.example).
+#   cp .env.example .env    # e preencha
+#   docker compose up -d --build
+# Em produção, coloque um proxy reverso com HTTPS na frente da porta 5000.
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    environment:
+      - MONGO_URL=mongo
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:8.0
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
