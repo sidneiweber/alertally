@@ -23,7 +23,7 @@ alerts = db.alerts
 def create_indexes():
     try:
         # Índice composto para queries mais comuns
-        alerts.create_index([("state", 1), ("severity_number", -1), ("update_at", -1)])
+        alerts.create_index([("state", 1), ("severity_number", -1), ("update_at", 1)])
 
         # Índice para incident_id (usado em updates e deletes)
         alerts.create_index("incident_id", unique=True)
