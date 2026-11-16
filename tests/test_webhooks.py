@@ -235,3 +235,73 @@ def test_aws_basic_auth(client, alerts, monkeypatch):
     ok = sns(alarm("ALARM"))
     ok["headers"].update(_basic("sns", "pw"))
     assert client.post("/aws", **ok).status_code == 200
+
+
+@pytest.mark.parametrize('starts_at', ['2026-11-01T11:00:00Z', '2026-11-01T08:00:00-03:00'])
+def test_alertmanager_new_occurrence_closes_stale_same_fingerprint(client, alerts, caplog, starts_at):
+    payload = am_payload(severity='warning')
+    old_id = client.post('/alertmanager', json=payload).json['incidents'][0]
+    # A critical alert has its own lifecycle, even for the same resource.
+    critical = am_payload()
+    critical['alerts'][0]['fingerprint'] = 'critical-fingerprint'
+    client.post('/alertmanager', json=critical)
+    payload['alerts'][0]['startsAt'] = starts_at
+    new_id = client.post('/alertmanager', json=payload).json['incidents'][0]
+    client.post('/alertmanager', json=payload)  # retry must not duplicate incidents
+    old = alerts.find_one({'incident_id': old_id})
+    assert old['state'] == 'closed'
+    assert old['closure_reason'] == 'superseded' and old['superseded_by'] == new_id
+    assert old['ends_at'] == '0001-01-01T00:00:00Z'  # no invented recovery time
+    assert alerts.find_one({'incident_id': new_id})['state'] == 'open'
+    assert alerts.find_one({'labels.severity': 'critical'})['state'] == 'open'
+    assert alerts.count_documents({}) == 3
+    assert 'previous occurrence superseded' in caplog.text
+
+
+@pytest.mark.parametrize('starts_at', ['', 'invalid', '2026-11-01T11:00:00'])
+def test_alertmanager_invalid_start_does_not_close_other_occurrences(client, alerts, starts_at):
+    payload = am_payload()
+    old_id = client.post('/alertmanager', json=payload).json['incidents'][0]
+    payload['alerts'][0]['startsAt'] = starts_at
+    client.post('/alertmanager', json=payload)
+    assert alerts.find_one({'incident_id': old_id})['state'] == 'open'
+
+
+def test_alertmanager_delayed_occurrence_does_not_close_newer(client, alerts):
+    payload = am_payload()
+    payload['alerts'][0]['startsAt'] = '2026-11-01T11:00:00Z'
+    new_id = client.post('/alertmanager', json=payload).json['incidents'][0]
+    client.post('/alertmanager', json=am_payload())
+    client.post('/alertmanager', json=am_payload(status='resolved'))
+    assert alerts.find_one({'incident_id': new_id})['state'] == 'open'
+
+
+@pytest.mark.parametrize('source', ['alertmanager', 'gcp', 'aws'])
+def test_repeated_notifications_preserve_opening_time(client, alerts, source):
+    from datetime import datetime
+
+    if source == 'alertmanager':
+        path, body = '/alertmanager', {'json': am_payload()}
+    elif source == 'gcp':
+        path, body = '/gcp', {'json': gcp_payload(started_at=1793527200)}
+    else:
+        path, body = '/aws', sns(alarm('ALARM'))
+    assert client.post(path, **body).status_code == 200
+    first = alerts.find_one({'source': source})
+    assert first['opened_at'] == datetime(2026, 11, 1, 10)
+    alerts.update_one({'_id': first['_id']}, {'$set': {'update_at': datetime(2026, 11, 1, 12)}})
+    assert client.post(path, **body).status_code == 200
+    repeated = alerts.find_one({'_id': first['_id']})
+    assert repeated['opened_at'] == first['opened_at']
+    assert repeated['update_at'] > datetime(2026, 11, 1, 12)
+    assert alerts.count_documents({'source': source}) == 1
+
+
+def test_legacy_alert_without_source_start_preserves_previous_time(client, alerts):
+    from datetime import datetime
+
+    first_seen = datetime(2026, 10, 1)
+    alerts.insert_one({'incident_id': '0.abc', 'source': 'gcp', 'state': 'open', 'update_at': first_seen})
+    client.post('/gcp', json=gcp_payload())
+    client.post('/gcp', json=gcp_payload())
+    assert alerts.find_one({'incident_id': '0.abc'})['opened_at'] == first_seen
