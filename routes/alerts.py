@@ -23,24 +23,12 @@ am_logger = logging.getLogger('alertally.alertmanager')
 @alerts_bp.route('/alerts', methods=['GET'])
 @login_required
 def alerts_list():
-    results = alerts.find(
-        {'state': 'open'},
-        {
-            'incident_id': 1,
-            'name': 1,
-            'source': 1,
-            'state': 1,
-            'severity': 1,
-            'severity_number': 1,
-            'summary': 1,
-            'url': 1,
-            'update_at': 1,
-            'labels': 1,
-            'ack_by': 1,
-            'ack_by_name': 1,
-            'ack_at': 1
-        }
-    ).sort([('severity_number', -1), ('update_at', 1)]).limit(100)
+    results = alerts.aggregate([
+        {'$match': {'state': 'open'}},
+        {'$addFields': {'opened_at': {'$ifNull': ['$opened_at', '$update_at']}}},
+        {'$sort': {'severity_number': -1, 'opened_at': 1}},
+        {'$limit': 100},
+    ])
     return render_template('alerts.html', alerts=list(results),
                            session=get_session_user(),
                            admin_users=Config.ADMIN_USERS)
@@ -78,6 +66,22 @@ def _unauthorized():
     return 'Unauthorized', 401, {'WWW-Authenticate': 'Basic realm="alertally"'}
 
 
+def _incident_opened_at(incident_id, raw, now):
+    """Prefer the source's start time; keep legacy first-seen time as fallback."""
+    try:
+        if isinstance(raw, (int, float)):
+            return datetime.fromtimestamp(raw, tz=timezone('UTC'))
+        started = datetime.fromisoformat(raw.replace('Z', '+00:00'))
+        if started.tzinfo is not None:
+            return started
+    except (ValueError, TypeError, AttributeError, OverflowError, OSError):
+        pass
+    previous = alerts.find_one({'incident_id': incident_id}, {'opened_at': 1, 'update_at': 1})
+    if previous:
+        return previous.get('opened_at') or previous.get('update_at') or now
+    return now
+
+
 @alerts_bp.route('/gcp', methods=['POST'])
 def parse_request():
     if not _basic_auth_ok(Config.GCP_WEBHOOK_USER, Config.GCP_WEBHOOK_PASSWORD):
@@ -109,7 +113,8 @@ def parse_request():
 
     alerts.update_one(
         {'incident_id': incident_id},
-        {'$set': update_data},
+        {'$set': update_data, '$min': {'opened_at': _incident_opened_at(
+            incident_id, incident.get('started_at'), update_data['update_at'])}},
         upsert=True
     )
 
@@ -140,6 +145,41 @@ def _normalize_severity(raw, default='Unknown'):
 def _alertmanager_severity(labels):
     """Mapeia o label `severity` do Prometheus para as chaves de alerts_dict."""
     return _normalize_severity(labels.get('severity'))
+
+
+def _close_previous_alertmanager_occurrences(fingerprint, starts_at, incident_id, now, request_id):
+    """A later startsAt proves that an earlier occurrence is no longer firing.
+
+    Do not infer resolution across severities or from absence in a batch.
+    Keep ends_at untouched: the actual resolution time was never received.
+    """
+    try:
+        started = datetime.fromisoformat(starts_at.replace('Z', '+00:00'))
+        if started.tzinfo is None:
+            return
+    except (ValueError, TypeError, AttributeError):
+        return
+    candidates = alerts.find({
+        'source': 'alertmanager', 'state': 'open',
+        'incident_id': {'$regex': '^am-' + re.escape(fingerprint) + '-'},
+    })
+    for previous in candidates:
+        try:
+            previous_start = datetime.fromisoformat(previous['starts_at'].replace('Z', '+00:00'))
+            if previous_start >= started:
+                continue
+        except (KeyError, ValueError, TypeError, AttributeError):
+            continue
+        result = alerts.update_one(
+            {'_id': previous['_id'], 'state': 'open'},
+            {'$set': {'state': 'closed', 'closure_reason': 'superseded',
+                      'superseded_by': incident_id, 'update_at': now}},
+        )
+        if result.modified_count:
+            am_logger.warning(
+                'Alertmanager previous occurrence superseded: request_id=%s incident_id=%s superseded_by=%s; resolved webhook not received',
+                request_id, previous['incident_id'], incident_id,
+            )
 
 
 @alerts_bp.route('/alertmanager', methods=['POST'])
@@ -209,7 +249,8 @@ def parse_alertmanager():
 
         result = alerts.update_one(
             {'incident_id': incident_id},
-            {'$set': update_data},
+            {'$set': update_data, '$min': {'opened_at': _incident_opened_at(
+                incident_id, starts_at, update_data['update_at'])}},
             upsert=True
         )
         am_logger.debug('Alertmanager database result %s', json.dumps({
@@ -221,6 +262,10 @@ def parse_alertmanager():
             am_logger.warning(
                 'Alertmanager resolved without matching incident: request_id=%s fingerprint=%s startsAt=%s resource=%s service=%s',
                 request_id, fingerprint, starts_at, labels.get('resource'), labels.get('service'),
+            )
+        if state == 'open':
+            _close_previous_alertmanager_occurrences(
+                fingerprint, starts_at, incident_id, update_data['update_at'], request_id,
             )
         current_app.logger.info(f'Alertmanager incident {incident_id} {state}')
         processed.append(incident_id)
@@ -347,7 +392,11 @@ def parse_aws_sns():
         'starts_at': state_time,
         'update_at': now,
     }
-    alerts.update_one({'incident_id': incident_id}, {'$set': update_data}, upsert=True)
+    alerts.update_one(
+        {'incident_id': incident_id},
+        {'$set': update_data, '$min': {'opened_at': _incident_opened_at(incident_id, state_time, now)}},
+        upsert=True,
+    )
     current_app.logger.info(f'AWS incident {incident_id} opened')
     return jsonify({'incident': incident_id})
 
