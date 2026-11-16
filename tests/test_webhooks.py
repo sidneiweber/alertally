@@ -1,307 +1,240 @@
-"""Entrada de alertas: GCP Monitoring, Alertmanager e AWS (CloudWatch via SNS)."""
-import base64
-import json
-
-import pytest
-
-from config import Config
-
-
-def _basic(user, password):
-    return {"Authorization": "Basic " + base64.b64encode(f"{user}:{password}".encode()).decode()}
-
-
-# ---------- GCP ----------
-
-def gcp_payload(**incident):
-    base = {
-        "incident_id": "0.abc",
-        "condition_name": "VM CPU high",
-        "state": "open",
-        "severity": "Critical",
-        "url": "https://console.cloud.google.com/monitoring/alerting/incidents/0.abc",
-        "observed_value": "0.97",
-        "documentation": {"content": "Check the VM"},
-        "metric": {"labels": {"instance": "vm-1"}},
-    }
-    base.update(incident)
-    return {"version": "1.2", "incident": base}
-
-
-def test_gcp_opens_and_closes(client, alerts):
-    assert client.post("/gcp", json=gcp_payload()).status_code == 200
-    doc = alerts.find_one({"incident_id": "0.abc"})
-    assert doc["state"] == "open"
-    assert doc["severity"] == "Critical" and doc["severity_number"] == 5
-    assert doc["summary"] == "Check the VM"
-    assert doc["labels"] == {"instance": "vm-1"}
-
-    client.post("/gcp", json=gcp_payload(state="closed"))
-    assert alerts.find_one({"incident_id": "0.abc"})["state"] == "closed"
-
-
-@pytest.mark.parametrize("raw, expected", [
-    ("CRITICAL", "Critical"),
-    ("warning", "Warning"),
-    ("Error", "Error"),
-    ("No severity", "No severity"),
-    ("something-new", "Unknown"),   # antes derrubava o webhook com erro 500
-    (None, "Unknown"),
-])
-def test_gcp_severity_is_normalized(client, alerts, raw, expected):
-    payload = gcp_payload(severity=raw)
-    assert client.post("/gcp", json=payload).status_code == 200
-    assert alerts.find_one({"incident_id": "0.abc"})["severity"] == expected
-
-
-def test_gcp_tolerates_missing_optional_fields(client, alerts):
-    payload = {"incident": {"incident_id": "0.min", "state": "open"}}
-    assert client.post("/gcp", json=payload).status_code == 200
-    doc = alerts.find_one({"incident_id": "0.min"})
-    assert doc["name"] == "Unnamed alert" and doc["labels"] == {}
-
-
-@pytest.mark.parametrize("body", [
-    {"json": {}},
-    {"json": {"incident": "x"}},
-    {"json": {"incident": {"state": "open"}}},
-    {"data": "not json", "content_type": "text/plain"},
-])
-def test_gcp_rejects_invalid_payload(client, alerts, body):
-    assert client.post("/gcp", **body).status_code == 400
-
-
-def test_gcp_basic_auth(client, alerts, monkeypatch):
-    monkeypatch.setattr(Config, "GCP_WEBHOOK_USER", "gcp")
-    monkeypatch.setattr(Config, "GCP_WEBHOOK_PASSWORD", "s3cret")
-    assert client.post("/gcp", json=gcp_payload()).status_code == 401
-    assert client.post("/gcp", json=gcp_payload(), headers=_basic("gcp", "wrong")).status_code == 401
-    assert client.post("/gcp", json=gcp_payload(), headers=_basic("gcp", "s3cret")).status_code == 200
-
-
-# ---------- Alertmanager ----------
-
-def am_payload(status="firing", severity="critical"):
-    return {
-        "status": status,
-        "externalURL": "http://alertmanager:9093",
-        "alerts": [{
-            "status": status,
-            "fingerprint": "f00d",
-            "startsAt": "2026-11-01T10:00:00.000Z",
-            "endsAt": "0001-01-01T00:00:00Z",
-            "labels": {"alertname": "PodCrashLooping", "severity": severity, "pod": "api-1"},
-            "annotations": {"summary": "Pod is crash looping"},
-        }],
-    }
-
-
-def test_alertmanager_firing_then_resolved(client, alerts):
-    resp = client.post("/alertmanager", json=am_payload())
-    assert resp.status_code == 200 and resp.json["processed"] == 1
-    doc = alerts.find_one({"source": "alertmanager"})
-    assert doc["state"] == "open" and doc["severity"] == "Critical"
-
-    client.post("/alertmanager", json=am_payload(status="resolved"))
-    assert alerts.count_documents({"source": "alertmanager"}) == 1
-    assert alerts.find_one({"source": "alertmanager"})["state"] == "closed"
-
-
-def test_alertmanager_token(client, alerts, monkeypatch):
-    monkeypatch.setattr(Config, "ALERTMANAGER_TOKEN", "tok")
-    assert client.post("/alertmanager", json=am_payload()).status_code == 401
-    resp = client.post("/alertmanager", json=am_payload(), headers={"Authorization": "Bearer tok"})
-    assert resp.status_code == 200
-
-
-def test_alertmanager_resolves_only_one_resource_in_mixed_batch(client, alerts):
-    payload = am_payload()
-    first = payload['alerts'][0]
-    first['labels'].update(alertname='NodeMemoryUsage', resource='api-geral')
-    second = dict(first, fingerprint='other', labels=dict(first['labels'], resource='api-validation'))
-    payload['alerts'].append(second)
-    client.post('/alertmanager', json=payload)
-    # The group is still firing while one individual alert is resolved.
-    first['status'] = 'resolved'
-    client.post('/alertmanager', json=payload)
-    client.post('/alertmanager', json=payload)
-    assert alerts.count_documents({}) == 2
-    assert alerts.find_one({'labels.resource': 'api-geral'})['state'] == 'closed'
-    assert alerts.find_one({'labels.resource': 'api-validation'})['state'] == 'open'
-
-
-def test_alertmanager_logs_unmatched_resolution(client, alerts, caplog):
-    client.post('/alertmanager', json=am_payload(status='resolved'))
-    assert 'resolved without matching incident' in caplog.text
-
-
-def test_alertmanager_invalid_payload(client, alerts):
-    assert client.post("/alertmanager", json={"foo": 1}).status_code == 400
-
-
-def test_alertmanager_debug_logs_correlate_batch_alert_and_database(client, alerts, caplog, monkeypatch):
-    monkeypatch.setattr(Config, 'ALERTMANAGER_TOKEN', 'private-token')
-    caplog.set_level('DEBUG', logger='alertally.alertmanager')
-    payload = am_payload()
-    payload.update(receiver='alertally', groupKey='memory-group',
-                   groupLabels={'alertname': 'PodCrashLooping'})
-    headers = {'Authorization': 'Bearer private-token'}
-    client.post('/alertmanager', json=payload, headers=headers)
-    client.post('/alertmanager', json=am_payload(status='resolved'), headers=headers)
-    records = [r.getMessage() for r in caplog.records if r.name == 'alertally.alertmanager']
-    batch = json.loads(next(r.removeprefix('Alertmanager batch ') for r in records
-                            if r.startswith('Alertmanager batch ')))
-    detail = json.loads(next(r.removeprefix('Alertmanager alert ') for r in records
-                             if r.startswith('Alertmanager alert ')))
-    result = json.loads(next(r.removeprefix('Alertmanager database result ') for r in records
-                             if r.startswith('Alertmanager database result ')))
-    assert batch['request_id'] == detail['request_id'] == result['request_id']
-    assert batch['groupKey'] == 'memory-group'
-    assert detail['labels']['pod'] == 'api-1'
-    assert result['inserted'] is True
-    assert any('"matched_count": 1' in r and '"state": "closed"' in r for r in records)
-    assert 'private-token' not in caplog.text
-
-
-def test_alertmanager_truncation_warning_without_debug(client, alerts, caplog):
-    caplog.set_level('INFO', logger='alertally.alertmanager')
-    payload = am_payload()
-    payload['truncatedAlerts'] = 3
-    assert client.post('/alertmanager', json=payload).status_code == 200
-    assert 'truncatedAlerts=3' in caplog.text
-    assert 'Alertmanager database result' not in caplog.text
-
-
-# ---------- AWS (SNS) ----------
-
-ALARM_ARN = "arn:aws:cloudwatch:us-east-1:123456789012:alarm:HighLatency"
-
-
-def sns(message, msg_type="Notification", topic="arn:aws:sns:us-east-1:123456789012:alerts"):
-    envelope = {"Type": msg_type, "TopicArn": topic,
-                "Message": json.dumps(message) if isinstance(message, dict) else message}
-    return {"data": json.dumps(envelope), "content_type": "text/plain",
-            "headers": {"x-amz-sns-message-type": msg_type}}
-
-
-def alarm(state, when="2026-11-01T10:00:00.000+0000"):
-    return {
-        "AlarmName": "HighLatency", "AlarmArn": ALARM_ARN, "NewStateValue": state,
-        "StateChangeTime": when, "AlarmDescription": "severity=critical; p99 above 2s",
-        "AWSAccountId": "123456789012",
-        "Trigger": {"Namespace": "AWS/ApplicationELB", "MetricName": "TargetResponseTime",
-                    "Dimensions": [{"name": "LoadBalancer", "value": "app/web/1"}]},
-    }
-
-
-def test_aws_alarm_then_ok(client, alerts):
-    assert client.post("/aws", **sns(alarm("ALARM"))).status_code == 200
-    doc = alerts.find_one({"source": "aws"})
-    assert doc["state"] == "open" and doc["severity"] == "Critical"
-    assert doc["summary"] == "p99 above 2s"
-    assert doc["labels"]["LoadBalancer"] == "app/web/1"
-
-    # reentrega do SNS não duplica
-    client.post("/aws", **sns(alarm("ALARM")))
-    assert alerts.count_documents({"source": "aws"}) == 1
-
-    resp = client.post("/aws", **sns(alarm("OK", when="2026-11-01T10:05:00.000+0000")))
-    assert resp.json["closed"] == 1
-    assert alerts.find_one({"source": "aws"})["state"] == "closed"
-
-
-def test_aws_topic_allow_list(client, alerts, monkeypatch):
-    monkeypatch.setattr(Config, "AWS_SNS_TOPIC_ARNS", ["arn:aws:sns:us-east-1:123456789012:other"])
-    assert client.post("/aws", **sns(alarm("ALARM"))).status_code == 403
-
-
-def test_aws_rejects_fake_subscribe_url(client, alerts):
-    envelope = sns({}, msg_type="SubscriptionConfirmation")
-    body = json.loads(envelope["data"])
-    body["SubscribeURL"] = "https://evil.example.com/confirm"
-    envelope["data"] = json.dumps(body)
-    assert client.post("/aws", **envelope).status_code == 400
-
-
-@pytest.mark.parametrize("data", ["not json", "[1, 2]"])
-def test_aws_invalid_envelope(client, alerts, data):
-    assert client.post("/aws", data=data, content_type="text/plain").status_code == 400
-
-
-def test_aws_basic_auth(client, alerts, monkeypatch):
-    monkeypatch.setattr(Config, "AWS_SNS_USER", "sns")
-    monkeypatch.setattr(Config, "AWS_SNS_PASSWORD", "pw")
-    assert client.post("/aws", **sns(alarm("ALARM"))).status_code == 401
-    ok = sns(alarm("ALARM"))
-    ok["headers"].update(_basic("sns", "pw"))
-    assert client.post("/aws", **ok).status_code == 200
-
-
-@pytest.mark.parametrize('starts_at', ['2026-11-01T11:00:00Z', '2026-11-01T08:00:00-03:00'])
-def test_alertmanager_new_occurrence_closes_stale_same_fingerprint(client, alerts, caplog, starts_at):
-    payload = am_payload(severity='warning')
-    old_id = client.post('/alertmanager', json=payload).json['incidents'][0]
-    # A critical alert has its own lifecycle, even for the same resource.
-    critical = am_payload()
-    critical['alerts'][0]['fingerprint'] = 'critical-fingerprint'
-    client.post('/alertmanager', json=critical)
-    payload['alerts'][0]['startsAt'] = starts_at
-    new_id = client.post('/alertmanager', json=payload).json['incidents'][0]
-    client.post('/alertmanager', json=payload)  # retry must not duplicate incidents
-    old = alerts.find_one({'incident_id': old_id})
-    assert old['state'] == 'closed'
-    assert old['closure_reason'] == 'superseded' and old['superseded_by'] == new_id
-    assert old['ends_at'] == '0001-01-01T00:00:00Z'  # no invented recovery time
-    assert alerts.find_one({'incident_id': new_id})['state'] == 'open'
-    assert alerts.find_one({'labels.severity': 'critical'})['state'] == 'open'
-    assert alerts.count_documents({}) == 3
-    assert 'previous occurrence superseded' in caplog.text
-
-
-@pytest.mark.parametrize('starts_at', ['', 'invalid', '2026-11-01T11:00:00'])
-def test_alertmanager_invalid_start_does_not_close_other_occurrences(client, alerts, starts_at):
-    payload = am_payload()
-    old_id = client.post('/alertmanager', json=payload).json['incidents'][0]
-    payload['alerts'][0]['startsAt'] = starts_at
-    client.post('/alertmanager', json=payload)
-    assert alerts.find_one({'incident_id': old_id})['state'] == 'open'
-
-
-def test_alertmanager_delayed_occurrence_does_not_close_newer(client, alerts):
-    payload = am_payload()
-    payload['alerts'][0]['startsAt'] = '2026-11-01T11:00:00Z'
-    new_id = client.post('/alertmanager', json=payload).json['incidents'][0]
-    client.post('/alertmanager', json=am_payload())
-    client.post('/alertmanager', json=am_payload(status='resolved'))
-    assert alerts.find_one({'incident_id': new_id})['state'] == 'open'
-
-
-@pytest.mark.parametrize('source', ['alertmanager', 'gcp', 'aws'])
-def test_repeated_notifications_preserve_opening_time(client, alerts, source):
-    from datetime import datetime
-
-    if source == 'alertmanager':
-        path, body = '/alertmanager', {'json': am_payload()}
-    elif source == 'gcp':
-        path, body = '/gcp', {'json': gcp_payload(started_at=1793527200)}
-    else:
-        path, body = '/aws', sns(alarm('ALARM'))
-    assert client.post(path, **body).status_code == 200
-    first = alerts.find_one({'source': source})
-    assert first['opened_at'] == datetime(2026, 11, 1, 10)
-    alerts.update_one({'_id': first['_id']}, {'$set': {'update_at': datetime(2026, 11, 1, 12)}})
-    assert client.post(path, **body).status_code == 200
-    repeated = alerts.find_one({'_id': first['_id']})
-    assert repeated['opened_at'] == first['opened_at']
-    assert repeated['update_at'] > datetime(2026, 11, 1, 12)
-    assert alerts.count_documents({'source': source}) == 1
-
-
-def test_legacy_alert_without_source_start_preserves_previous_time(client, alerts):
-    from datetime import datetime
-
-    first_seen = datetime(2026, 10, 1)
-    alerts.insert_one({'incident_id': '0.abc', 'source': 'gcp', 'state': 'open', 'update_at': first_seen})
-    client.post('/gcp', json=gcp_payload())
-    client.post('/gcp', json=gcp_payload())
-    assert alerts.find_one({'incident_id': '0.abc'})['opened_at'] == first_seen
+# Alertmanager integration
+
+Alertally receives alerts from Prometheus Alertmanager at:
+
+```
+POST https://alertally.example.com/alertmanager
+```
+
+Alertmanager sends its standard webhook (payload `version: "4"`), and each alert in
+the payload becomes an incident in Alertally. The same Alertmanager can send the alert
+to Alertally **and** to Slack at the same time (see [Alertally + Slack](#alertally--slack)).
+
+## 1. Configure Alertally
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `ALERTMANAGER_TOKEN` | No, but recommended | When set, the endpoint requires `Authorization: Bearer <token>` and returns `401` without it. Without it, anyone who can reach the URL can create alerts. |
+
+Generate a token and add it to the server's `.env`:
+
+```bash
+echo "ALERTMANAGER_TOKEN=$(openssl rand -hex 32)" >> .env
+docker compose up -d web
+```
+
+> The `/alertmanager` endpoint does not go through the Google login, so the token is
+> what protects it.
+
+## 2. Configure Alertmanager
+
+### Alertally + Slack
+
+A receiver can have several destinations. With `webhook_configs` and `slack_configs`
+in the same receiver, each notification goes to both:
+
+```yaml
+# alertmanager.yml
+route:
+  receiver: alertally-and-slack
+  group_by: ['alertname', 'namespace']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+receivers:
+  - name: alertally-and-slack
+    webhook_configs:
+      - url: https://alertally.example.com/alertmanager
+        send_resolved: true          # required to close the alert in Alertally
+        http_config:
+          authorization:
+            type: Bearer
+            credentials_file: /etc/alertmanager/secrets/alertally-token
+    slack_configs:
+      - api_url_file: /etc/alertmanager/secrets/slack-webhook-url
+        channel: '#infra-alerts'
+        send_resolved: true
+        title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+        text: >-
+          {{ range .Alerts }}• *{{ .Labels.severity }}* {{ .Annotations.summary }}
+          {{ end }}
+```
+
+The files in `/etc/alertmanager/secrets/` hold the Alertally token and the Slack
+webhook URL. Mount them from a Secret instead of putting the values in the YAML.
+
+### Destinations with different filters
+
+If Slack should receive only some alerts (for example, only critical ones) and
+Alertally should receive all of them, use separate receivers and `continue: true`.
+Without `continue`, Alertmanager stops at the first matching route.
+
+```yaml
+route:
+  receiver: alertally            # default: everything goes to Alertally
+  routes:
+    - receiver: alertally
+      continue: true             # keep evaluating the next routes
+    - receiver: slack-critical
+      matchers:
+        - severity = "critical"
+
+receivers:
+  - name: alertally
+    webhook_configs:
+      - url: https://alertally.example.com/alertmanager
+        send_resolved: true
+        http_config:
+          authorization:
+            type: Bearer
+            credentials_file: /etc/alertmanager/secrets/alertally-token
+  - name: slack-critical
+    slack_configs:
+      - api_url_file: /etc/alertmanager/secrets/slack-webhook-url
+        channel: '#critical-alerts'
+        send_resolved: true
+```
+
+### kube-prometheus-stack (Helm)
+
+The configuration above goes in `alertmanager.config` in `values.yaml`, and the
+secrets are mounted with `alertmanager.alertmanagerSpec.secrets`:
+
+```yaml
+alertmanager:
+  alertmanagerSpec:
+    secrets:
+      - alertally-secrets   # Secret with the keys alertally-token and slack-webhook-url
+  config:
+    route: { ... }          # same as the example above
+    receivers: [ ... ]
+```
+
+With `alertmanagerSpec.secrets`, each Secret is mounted at
+`/etc/alertmanager/secrets/<secret-name>/`. Adjust the `credentials_file` and
+`api_url_file` paths to include the Secret name, for example
+`/etc/alertmanager/secrets/alertally-secrets/alertally-token`.
+
+Alertmanager must be able to reach `alertally.example.com` over the network. Check
+this from a pod in the cluster before enabling the route.
+
+## 3. How Alertally reads the alert
+
+| Field in Alertally | Comes from |
+|---|---|
+| Name | `alertname` label |
+| Severity | `severity` label (table below) |
+| Summary | `summary` annotation, otherwise `description` |
+| Value / threshold | `value` annotation |
+| Link | the alert's `generatorURL`, otherwise Alertmanager's `externalURL` |
+| Labels | all of the alert's labels |
+| State | `open` when `firing`, `closed` when `resolved` |
+
+| `severity` label | Severity in Alertally |
+|---|---|
+| `critical`, `page` | Critical |
+| `high`, `error` | Error |
+| `warning`, `warn`, `medium` | Warning |
+| `info`, `low` | Info |
+| `debug` | Debug |
+| `none` | No severity |
+| missing or any other value | Unknown |
+
+### Counting in reports
+
+- Each incident is identified by `fingerprint` + `startsAt`.
+- Different label sets have different fingerprints, even with the same alert name.
+  Resolution matches the same fingerprint and exact `startsAt` used when firing;
+  the status of each alert is read individually, even in a mixed firing/resolved batch.
+- The ranking separates name, severity, source, `resource` and `service`. Missing
+  resource/service labels remain in a group without those dimensions.
+- Re-sends of the same firing (`repeat_interval`, `group_interval`) update the same
+  incident, so they **don't inflate** the report counts.
+- When an alert resolves and later fires again, `startsAt` changes and it counts as a
+  new firing. This is what the "most triggered alerts" ranking measures.
+- If a new firing has the same fingerprint and a later valid `startsAt`, Alertally
+  closes older open occurrences of that fingerprint with `closure_reason=superseded`
+  and `superseded_by` pointing to the new incident. This also covers records stored
+  before this behavior was introduced. It logs a warning about the missing resolved
+  webhook and leaves `ends_at` untouched because the recovery time is unknown.
+  Different fingerprints (including warning versus critical) remain independent.
+- Without `send_resolved: true`, an alert stays open until someone closes it manually
+  or a later occurrence of the same fingerprint supersedes it.
+- If a resolved webhook creates a new incident instead of matching an existing
+  one, the server logs `resolved without matching incident` with its fingerprint,
+  start time, resource and service. Compare these with the original firing event.
+
+## 4. Testing
+
+### Debugging delivery and resolution
+
+Set `ALERTMANAGER_DEBUG=true` in the Alertally environment and restart/recreate the
+application to enable the dedicated `alertally.alertmanager` logger. This does not
+enable Flask debug mode. With Compose, recreate using:
+
+```bash
+docker compose up -d --force-recreate web
+docker compose logs -f web
+```
+
+Each delivery has a generated `request_id`, shared by its batch, per-alert,
+database-result and completion logs. Debug logs include receiver, group key,
+group labels, group status, received count, truncation count, each alert's labels,
+fingerprint, timestamps, individual status, incident ID and database match/insert
+result. They omit authorization headers and annotations. Labels are included;
+turn debugging off after the investigation.
+
+For an incident left open, compare its firing and resolved events:
+
+- No resolved event: check delivery, routing, `send_resolved`, silences/inhibition
+  and notification timing in Alertmanager.
+- Resolved with `inserted=true`: its fingerprint or exact `startsAt` did not match
+  the original incident, or the original firing was never stored.
+- Resolved with `matched_count=1`: the update found the incident. Look for a later
+  firing delivery with the same incident ID if it subsequently reopens.
+
+`group_by` groups notifications; it does not change individual alert identities.
+Mixed batches may have group status `firing` and individual status `resolved`;
+Alertally uses the individual status. `group_interval` can delay updates.
+For this integration, use `send_resolved: true` and `max_alerts: 0` (no truncation)
+in `webhook_configs`. Truncated batches produce a warning even with debug disabled.
+
+### Send a test webhook
+
+Send an alert straight to Alertally, bypassing Alertmanager:
+
+```bash
+curl -X POST https://alertally.example.com/alertmanager \
+  -H "Authorization: Bearer $ALERTMANAGER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "version": "4", "status": "firing",
+    "alerts": [{
+      "status": "firing",
+      "fingerprint": "test123",
+      "startsAt": "2026-10-24T12:00:00Z",
+      "labels": {"alertname": "IntegrationTest", "severity": "info"},
+      "annotations": {"summary": "Integration test alert"}
+    }]
+  }'
+# Response: {"incidents": ["am-test123-..."], "processed": 1}
+```
+
+To close it, send the same JSON with `"status": "resolved"` inside the alert.
+
+To test the full path (Alertmanager → Alertally and Slack), fire an alert through
+Alertmanager itself:
+
+```bash
+amtool alert add IntegrationTest severity=info \
+  --annotation=summary="Integration test alert" \
+  --alertmanager.url=http://localhost:9093
+```
+
+Endpoint error responses:
+
+| Code | Cause |
+|---|---|
+| `401` | `ALERTMANAGER_TOKEN` is set and the header is missing or wrong |
+| `400` | body is not JSON or has no `alerts` key |
