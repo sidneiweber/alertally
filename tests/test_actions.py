@@ -155,3 +155,23 @@ class TestCsrf:
     def test_webhooks_are_exempt(self, client, alerts):
         resp = client.post("/alertmanager", json={"alerts": []})
         assert resp.status_code == 200
+
+
+def test_alert_list_uses_opening_time_after_recent_notification(client, alerts):
+    login(client)
+    now = datetime.now(timezone.utc)
+    for incident_id, opening_age, update_age in [('old', 48, 0), ('new', 2, 1)]:
+        alerts.insert_one({
+            'incident_id': incident_id, 'name': incident_id, 'state': 'open',
+            'severity': 'Warning', 'severity_number': 3, 'summary': 'test',
+            'labels': {}, 'url': 'http://x',
+            'opened_at': now - timedelta(hours=opening_age),
+            'update_at': now - timedelta(hours=update_age),
+        })
+    response = client.get('/alerts')
+    html = response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert html.index('id="alert-old"') < html.index('id="alert-new"')
+    from app import humanize_time
+    with client.application.test_request_context():
+        assert humanize_time(now - timedelta(hours=48)) in html
