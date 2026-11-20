@@ -128,6 +128,7 @@ this from a pod in the cluster before enabling the route.
 | Summary | `summary` annotation, otherwise `description` |
 | Value / threshold | `value` annotation |
 | Link | the alert's `generatorURL`, otherwise Alertmanager's `externalURL` |
+| Runbook | `runbook_url` annotation (HTTP or HTTPS), shown before the catalog service's runbook |
 | Labels | all of the alert's labels |
 | State | `open` when `firing`, `closed` when `resolved` |
 

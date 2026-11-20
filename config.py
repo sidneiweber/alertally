@@ -45,6 +45,9 @@ class Config:
     CATALOG_AUTO_CREATE = _env_bool("CATALOG_AUTO_CREATE", True)
     # Dias sem alertas para marcar um serviço como "sem atividade"
     CATALOG_STALE_DAYS = int(os.environ.get("CATALOG_STALE_DAYS", "30"))
+
+    # Janelas de manutenção (só admins criam): duração máxima em horas
+    MAINTENANCE_MAX_HOURS = int(os.environ.get("MAINTENANCE_MAX_HOURS", "24"))
     ALLOWED_DAYS = [1, 7, 15, 30, 60]
 
     # Quem pode entrar: e-mails de um domínio (ALLOWED_EMAIL_DOMAINS=example.com)

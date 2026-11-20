@@ -7,6 +7,9 @@
     <h1>{{ entry.name }}</h1>
     <div class="d-flex flex-wrap gap-2">
         <a class="btn btn-outline-primary" href="{{ url_for('catalog.edit', entry_id=entry._id) }}">{{ _('Edit') }}</a>
+        {% if can_manage_maintenance() %}
+        <a class="btn btn-outline-primary" href="{{ url_for('maintenance.new', entry_id=entry._id) }}">{{ _('Schedule maintenance') }}</a>
+        {% endif %}
         <form method="post" action="{{ url_for('catalog.archive', entry_id=entry._id) }}">
             {{ csrf() }}
             <input type="hidden" name="archived" value="{{ '0' if entry.archived else '1' }}">

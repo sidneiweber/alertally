@@ -10,6 +10,7 @@ from flask_babel import gettext as _
 from config import Config
 from routes.auth import login_required
 from utils.helpers import alerts, db, get_session_user
+from utils.catalog_rules import matching_services
 from utils.service_discovery import candidate_rule
 
 catalog_bp = Blueprint('catalog', __name__, url_prefix='/catalog')
@@ -57,23 +58,13 @@ def alert_query(services):
     return {'$or': rules} if rules else {'_id': {'$in': []}}
 
 
-def _matching_services(alert, services):
-    labels = alert.get('labels')
-    if not isinstance(labels, dict):
-        return []
-    return [service for service in services if any(
-        all(labels.get(key) == value for key, value in rule.items())
-        for rule in service['rules']
-    )]
-
-
 def _label_value_text(value):
     if value.startswith('"') or value != value.strip() or value.splitlines() != [value]:
         return json.dumps(value, ensure_ascii=True)
     return value
 
 
-def _rule_text(rule, separator='\n'):
+def rule_text(rule, separator='\n'):
     return separator.join(f'{key}={_label_value_text(value)}' for key, value in rule.items())
 
 
@@ -83,11 +74,11 @@ def _observed_rules():
     for alert in samples:
         rule = candidate_rule(alert.get('labels'))
         if rule:
-            options[_rule_text(rule)] = _rule_text(rule, ' · ')
+            options[rule_text(rule)] = rule_text(rule, ' · ')
     return sorted(options.items(), key=lambda option: option[1])[:50]
 
 
-def _read_rules(raw, observed):
+def read_rules(raw, observed):
     rules = []
     current = {}
     for line in [*raw.splitlines(), '', *observed.splitlines(), '']:
@@ -123,7 +114,7 @@ def _read_entry(kind):
         entry['service_ids'] = selected_ids(catalog, 'service_ids', kind='service')
         return entry
 
-    entry['rules'] = _read_rules(request.form.get('rules', ''), request.form.get('observed', ''))
+    entry['rules'] = read_rules(request.form.get('rules', ''), request.form.get('observed', ''))
     for field in ('owner', 'environment'):
         entry[field] = request.form.get(field, '').strip()
         if len(entry[field]) > 120:
@@ -195,7 +186,7 @@ def detail(entry_id):
     past = list(alerts.find({**query, 'state': 'closed'}).sort('update_at', -1).limit(MATCH_LIMIT))
     if entry['kind'] == 'group':
         for alert in active + past:
-            alert['matching_services'] = _matching_services(alert, services)
+            alert['matching_services'] = matching_services(alert, services)
     impacting = list(incidents.find({'impact_ids': entry['_id'], 'status': {'$ne': 'resolved'}})
                      .sort('created_at', -1))
     return render_template('catalog/detail.html', session=get_session_user(), entry=entry,
@@ -221,7 +212,7 @@ def edit(kind=None, entry_id=None):
     entry = get_document(catalog, entry_id) if entry_id else {}
     kind = entry.get('kind', kind)
     form = entry
-    rules = '\n\n'.join(_rule_text(rule) for rule in entry.get('rules', []))
+    rules = '\n\n'.join(rule_text(rule) for rule in entry.get('rules', []))
     if not entry and kind == 'service':
         # Prefilled from a suggestion; the person still reviews and saves it.
         form = {'name': request.args.get('name', '')[:120]}
@@ -266,7 +257,7 @@ def service_suggestions():
     matched = total = 0
     groups = {}
     for alert in rows:
-        covered = bool(_matching_services(alert, services))
+        covered = bool(matching_services(alert, services))
         updated = _as_utc(alert['update_at'])
         if updated >= coverage_since:
             total += 1
@@ -274,9 +265,9 @@ def service_suggestions():
         rule = None if covered else candidate_rule(alert.get('labels'))
         if rule is None:
             continue
-        key = _rule_text(rule)
+        key = rule_text(rule)
         group = groups.setdefault(key, {
-            'key': key, 'label': _rule_text(rule, ' · '), 'name': next(iter(rule.values())),
+            'key': key, 'label': rule_text(rule, ' · '), 'name': next(iter(rule.values())),
             'count': 0, 'last_at': updated, 'examples': [],
         })
         group['count'] += 1
@@ -303,7 +294,7 @@ def suggestions():
 
 def _suggested_rule():
     try:
-        rules = _read_rules(request.form.get('rule', ''), '')
+        rules = read_rules(request.form.get('rule', ''), '')
     except ValueError:
         abort(400)
     if len(rules) != 1:
@@ -333,7 +324,7 @@ def add_suggestion():
 @catalog_bp.post('/suggestions/dismiss')
 @login_required
 def dismiss_suggestion():
-    key = _rule_text(_suggested_rule())
+    key = rule_text(_suggested_rule())
     if request.form.get('restore') == '1':
         dismissed.delete_one({'rule': key})
     else:

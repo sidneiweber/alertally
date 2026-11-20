@@ -18,6 +18,7 @@ from routes.auth import auth_bp
 from routes.catalog import catalog_bp
 from routes.incidents import incidents_bp
 from routes.main import main_bp
+from routes.maintenance import maintenance_bp
 from utils.i18n import activate_humanize, init_i18n
 
 for handler in logging.root.handlers[:]:
@@ -79,6 +80,7 @@ app.register_blueprint(alerts_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(catalog_bp)
 app.register_blueprint(incidents_bp)
+app.register_blueprint(maintenance_bp)
 
 for webhook in ("parse_request", "parse_alertmanager", "parse_aws_sns"):
     csrf.exempt(f"routes.alerts.{webhook}")

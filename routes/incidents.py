@@ -15,6 +15,7 @@ from routes.catalog import (
     incidents,
     selected_ids,
 )
+from utils.enrichment import enrich_alerts
 from utils.helpers import alerts, alerts_dict, get_session_user
 
 incidents_bp = Blueprint('incidents', __name__, url_prefix='/incidents')
@@ -107,7 +108,7 @@ def _timeline(incident, linked):
 @login_required
 def detail(incident_id):
     incident = get_document(incidents, incident_id)
-    linked = list(alerts.find({'_id': {'$in': incident['alert_ids']}}).sort('opened_at', 1))
+    linked = enrich_alerts(list(alerts.find({'_id': {'$in': incident['alert_ids']}}).sort('opened_at', 1)))
     search = request.args.get('q', '').strip()[:120]
     query = {'_id': {'$nin': incident['alert_ids']}}
     if search:

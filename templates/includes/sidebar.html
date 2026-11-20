@@ -25,7 +25,8 @@
             </li>
             {% for prefix, endpoint, icon, label in [
                 ('/catalog', 'catalog.index', 'grid', _('Service catalog')),
-                ('/incidents', 'incidents.index', 'activity', _('Incidents'))
+                ('/incidents', 'incidents.index', 'activity', _('Incidents')),
+                ('/maintenance', 'maintenance.index', 'tool', _('Maintenance'))
             ] %}
             <li class="nav-item{% if path == prefix or path.startswith(prefix ~ '/') %} active{% endif %}">
                 <a href="{{ url_for(endpoint) }}" class="nav-link"{% if path == prefix %} aria-current="page"{% endif %}>

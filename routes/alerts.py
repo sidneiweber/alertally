@@ -16,7 +16,9 @@ from pytz import timezone
 from config import Config
 from routes.auth import login_required
 from utils.alert_history import alert_event, store_alert
+from utils.enrichment import enrich_alerts
 from utils.helpers import alerts, alerts_dict, get_session_user
+from utils.maintenance import active_windows, window_for, window_rules
 
 alerts_bp = Blueprint('alerts', __name__)
 am_logger = logging.getLogger('alertally.alertmanager')
@@ -30,7 +32,13 @@ def alerts_list():
         {'$sort': {'severity_number': -1, 'opened_at': 1}},
         {'$limit': 100},
     ])
-    return render_template('alerts.html', alerts=list(results),
+    windows = active_windows()
+    compiled = window_rules(windows)
+    active, held = [], []
+    for alert in enrich_alerts(list(results)):
+        alert['maintenance'] = window_for(alert.get('labels'), compiled) if compiled else None
+        (held if alert['maintenance'] else active).append(alert)
+    return render_template('alerts.html', alerts=active, held=held, windows=windows,
                            session=get_session_user(),
                            admin_users=Config.ADMIN_USERS)
 
@@ -52,6 +60,17 @@ def close_alert(incident_id):
         flash(_("You have successfully closed the alert."))
         current_app.logger.info(f'Incident {incident_id} closed')
     return redirect(url_for('main.index'))
+
+def _http_url(value):
+    """Return value when it is an HTTP(S) link short enough to show, otherwise None."""
+    if not isinstance(value, str) or len(value) > 2000:
+        return None
+    try:
+        parsed = urlparse(value.strip())
+    except ValueError:
+        return None
+    return value.strip() if parsed.scheme in ('http', 'https') and parsed.hostname else None
+
 
 def _basic_auth_ok(user, password):
     """Basic auth opcional: sem usuário configurado, libera."""
@@ -251,6 +270,7 @@ def parse_alertmanager():
             'severity_number': alerts_dict[severity],
             'summary': annotations.get('summary') or annotations.get('description') or 'No documentation',
             'description': annotations.get('description'),
+            'runbook_url': _http_url(annotations.get('runbook_url')),
             'url': am_alert.get('generatorURL') or payload.get('externalURL'),
             'threshold': annotations.get('value', 'Null'),
             'labels': labels,
@@ -477,5 +497,10 @@ def unack_alert(incident_id):
 
 @alerts_bp.route('/count', methods=['GET'])
 def count_alerts():
-    count = alerts.count_documents({'state': 'open'})
-    return str(count)
+    windows = active_windows()
+    if not windows:
+        return str(alerts.count_documents({'state': 'open'}))
+    # Alerts in a maintenance window don't count.
+    compiled = window_rules(windows)
+    rows = alerts.find({'state': 'open'}, {'labels': 1})
+    return str(sum(1 for alert in rows if not window_for(alert.get('labels'), compiled)))

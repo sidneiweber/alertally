@@ -1,0 +1,39 @@
+{% extends 'operations.html' %}
+{% from 'operations_macros.html' import alert_list, csrf %}
+{% from 'maintenance/macros.html' import window_summary %}
+{% set page_title = window.title %}
+{% block content %}
+<a href="{{ url_for('maintenance.index') }}">{{ _('Maintenance windows') }}</a>
+<div class="page-head mb-3">
+    <h1>{{ window.title }}</h1>
+    {% if can_manage_maintenance() and window.status != 'ended' %}
+    <form method="post" action="{{ url_for('maintenance.end', window_id=window._id) }}">
+        {{ csrf() }}
+        <button class="btn btn-outline-primary" type="submit">
+            {{ _('End now') if window.status == 'active' else _('Cancel window') }}</button>
+    </form>
+    {% endif %}
+</div>
+<section class="ops-panel mb-3">
+    {{ window_summary(window, link=false) }}
+    {% if window.ended_by %}
+    <p class="small text-muted mt-2 mb-0">{{ _('Ended early by %(email)s.', email=window.ended_by) }}</p>
+    {% endif %}
+</section>
+<div class="row g-3">
+    {% if window.status == 'active' %}
+    <div class="col-xl-6">
+        <section class="ops-panel">
+            <h2>{{ _('Alerts in maintenance now') }}</h2>
+            {{ alert_list(held) }}
+        </section>
+    </div>
+    {% endif %}
+    <div class="col-xl-6">
+        <section class="ops-panel">
+            <h2>{{ _('Alerts opened during this window') }}</h2>
+            {{ alert_list(opened) }}
+        </section>
+    </div>
+</div>
+{% endblock %}

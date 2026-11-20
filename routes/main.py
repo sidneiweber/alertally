@@ -33,10 +33,10 @@ def set_language(code):
     return resp
 
 
-def _daily_counts(start, end):
+def _daily_counts(start, end, scope):
     """Contagem de alertas por dia entre start e end, com zero nos dias vazios."""
     rows = alerts.aggregate([
-        {"$match": {"update_at": {"$gte": start, "$lt": end}}},
+        {"$match": {**scope, "update_at": {"$gte": start, "$lt": end}}},
         {"$group": {
             "_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$update_at"}},
             "count": {"$sum": 1}
@@ -69,6 +69,10 @@ def reports():
         days = 7
         error_message = _("Invalid 'days' parameter. Using %(days)d as default.", days=days)
 
+    # Alertas que abriram numa janela de manutenção ficam de fora, salvo pedido
+    include_maintenance = request.args.get('maintenance') == '1'
+    scope = {} if include_maintenance else {"maintenance_id": {"$exists": False}}
+
     now = datetime.now()
     limit_date = now - timedelta(days=days)
     previous_limit_date = limit_date - timedelta(days=days)
@@ -77,6 +81,7 @@ def reports():
     reports = list(alerts.aggregate([
         {
             "$match": {
+                **scope,
                 "update_at": {"$gte": limit_date}
             }
         },
@@ -105,6 +110,7 @@ def reports():
     severity_reports = list(alerts.aggregate([
         {
             "$match": {
+                **scope,
                 "update_at": {"$gte": limit_date}
             }
         },
@@ -123,8 +129,11 @@ def reports():
     ]))
 
     # Agregação para comparação de períodos
-    current_period_count = alerts.count_documents({"update_at": {"$gte": limit_date}})
-    previous_period_count = alerts.count_documents({"update_at": {"$gte": previous_limit_date, "$lt": limit_date}})
+    current_period_count = alerts.count_documents({**scope, "update_at": {"$gte": limit_date}})
+    previous_period_count = alerts.count_documents(
+        {**scope, "update_at": {"$gte": previous_limit_date, "$lt": limit_date}})
+    maintenance_count = alerts.count_documents(
+        {"maintenance_id": {"$exists": True}, "update_at": {"$gte": limit_date}})
     
     # Calcular variação percentual
     if previous_period_count > 0:
@@ -136,8 +145,8 @@ def reports():
 
     # Tendência diária do período atual e do anterior (dados reais dos dois),
     # incluindo dias sem alertas
-    current_daily = _daily_counts(limit_date, now)
-    previous_daily = _daily_counts(previous_limit_date, limit_date)
+    current_daily = _daily_counts(limit_date, now, scope)
+    previous_daily = _daily_counts(previous_limit_date, limit_date, scope)
     previous_daily = (previous_daily + [{"count": 0}] * len(current_daily))[:len(current_daily)]
 
     period_comparison = {
@@ -158,6 +167,8 @@ def reports():
         days=days,
         error=error_message,
         session=get_session_user(),
-        options=Config.ALLOWED_DAYS
+        options=Config.ALLOWED_DAYS,
+        include_maintenance=include_maintenance,
+        maintenance_count=maintenance_count,
     )
 

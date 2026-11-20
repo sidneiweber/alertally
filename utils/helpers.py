@@ -34,6 +34,8 @@ def create_indexes():
         # Uma entrada do catálogo por valor da label de serviço
         db.catalog.create_index("auto_key", unique=True, sparse=True)
         db.catalog_dismissed.create_index("rule", unique=True)
+        db.maintenance_windows.create_index([("ends_at", 1), ("starts_at", 1)])
+        alerts.create_index("maintenance_id", sparse=True)
 
         logging.info("MongoDB indexes created successfully")
     except PyMongoError as e:
