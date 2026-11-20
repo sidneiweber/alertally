@@ -1,6 +1,7 @@
 from pymongo.errors import DuplicateKeyError
 
 from utils.helpers import alerts
+from utils.maintenance import mark_maintenance
 from utils.service_discovery import ensure_service
 
 
@@ -9,14 +10,19 @@ def alert_event(kind, at, actor=None):
 
 
 def store_alert(alert_id, data, opened_at):
-    """Store the alert and register the service named by its labels."""
-    result = _write_alert(alert_id, data, opened_at)
+    """Store the alert, register its service and note a maintenance window it opened in."""
+    result, transitioned = _write_alert(alert_id, data, opened_at)
     ensure_service(data.get('labels'), data['update_at'])
+    if transitioned and data['state'] == 'open':
+        mark_maintenance(alert_id, data.get('labels'), data['update_at'])
     return result
 
 
 def _write_alert(alert_id, data, opened_at):
-    """Record state transitions in the same write that changes the alert."""
+    """Record state transitions in the same write that changes the alert.
+
+    Returns the write result and whether the alert changed state (or was created).
+    """
     identity = {'incident_id': alert_id}
     state = data['state']
     fields = {'$set': data, '$min': {'opened_at': opened_at}}
@@ -27,11 +33,11 @@ def _write_alert(alert_id, data, opened_at):
     while True:
         result = alerts.update_one({**identity, 'state': state}, fields)
         if result.matched_count:
-            return result
+            return result, False
         try:
             return alerts.update_one(
                 {**identity, 'state': {'$ne': state}}, transition, upsert=True,
-            )
+            ), True
         except DuplicateKeyError:
             # A concurrent delivery inserted or changed the same occurrence.
             continue

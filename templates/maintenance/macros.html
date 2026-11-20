@@ -1,0 +1,25 @@
+{% macro window_summary(window, link=true) %}
+<div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2">
+    <div>
+        {% if link %}<a class="fw-bold" href="{{ url_for('maintenance.detail', window_id=window._id) }}">{{ window.title }}</a>
+        {% else %}<span class="fw-bold">{{ window.title }}</span>{% endif %}
+        <div class="small text-muted">
+            {{ window.starts_at|operation_time }} → {{ window.ends_at|operation_time }}
+            · {{ window.created_by_name or window.created_by }}
+        </div>
+        {% if window.entries or window.rules %}
+        <div class="small d-flex flex-wrap gap-2">
+            {% for entry in window.entries %}
+            <a href="{{ url_for('catalog.detail', entry_id=entry._id) }}">{{ entry.name }}</a>
+            {% endfor %}
+            {% for rule in window.rules %}
+            <span class="mono">{% for key, value in rule.items() %}{{ key }}={{ value }}{% if not loop.last %} · {% endif %}{% endfor %}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    <span class="ops-status{% if window.status == 'active' %} ops-warning{% endif %}">
+        {{ {'active': _('In progress'), 'scheduled': _('Scheduled'), 'ended': _('Ended')}[window.status] }}
+    </span>
+</div>
+{% endmacro %}

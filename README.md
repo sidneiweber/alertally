@@ -24,6 +24,8 @@ Spanish (see [docs/i18n.md](docs/i18n.md)).
 - **Close alert**: admins only. Alerts also close on their own when the source reports them as resolved.
 - **Service catalog** (`/catalog`): link technical services to alert labels and group them into shared views.
 - **Incidents** (`/incidents`): create an incident from an alert, track ownership and confirmed impact, and follow the investigation timeline. See the [catalog and incident guide](docs/plans/2026-11-18-catalogo-e-incidentes-design.md).
+- **Alert context**: each alert shows its catalog service, owning team and runbook/dashboard links. A `runbook_url` annotation from Alertmanager takes precedence over the service's runbook.
+- **Maintenance windows** (`/maintenance`): admins schedule windows of up to 24 hours for catalog services, groups or label rules. Matching alerts are still stored, but move to a collapsed section of the alert list and leave the counter. Alerts that open during a window are left out of the reports unless you include them.
 - **Reports** (`/reports`): most frequent alerts and daily counts over the last 1, 7, 15, 30 or 60 days.
 - Access control by email domain, email list or admin list.
 
@@ -119,6 +121,7 @@ Everything comes from environment variables (the `.env` file). See
 | `TIMEZONE` | No | Time zone for displayed times (default `UTC`). |
 | `CATALOG_SERVICE_LABELS` | No | Comma-separated alert labels that name a technical service in the catalog, in priority order (default `service`). The first label present in an alert wins. |
 | `CATALOG_AUTO_CREATE` | No | Create catalog services from that label automatically (default `true`). |
+| `MAINTENANCE_MAX_HOURS` | No | Longest maintenance window an admin can create, in hours (default `24`). |
 | `CATALOG_STALE_DAYS` | No | Days without alerts before a service is flagged as having no recent activity (default `30`). |
 | `SESSION_COOKIE_SECURE` | No | `true` when served only over HTTPS. |
 | `MONGO_URL` / `MONGO_PORT` | No | Where MongoDB is (Compose already points to `mongo`). |

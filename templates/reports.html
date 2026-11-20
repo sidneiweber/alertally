@@ -85,12 +85,24 @@
                 </div>
                 <nav class="period-switch" aria-label="{{ _('Period') }}">
                     {% for value in options %}
-                    <a href="/reports?days={{ value }}"
+                    <a href="{{ url_for('main.reports', days=value, maintenance=1 if include_maintenance else None) }}"
                        class="{% if days == value %}active{% endif %}"
                        {% if days == value %}aria-current="page"{% endif %}>{{ value }}d</a>
                     {% endfor %}
                 </nav>
             </div>
+
+            {% if maintenance_count or include_maintenance %}
+            <p class="small text-muted mb-3">
+                {% if include_maintenance %}
+                {{ ngettext('Including %(num)d alert opened during maintenance windows.', 'Including %(num)d alerts opened during maintenance windows.', maintenance_count) }}
+                <a href="{{ url_for('main.reports', days=days) }}">{{ _('Leave them out') }}</a>
+                {% else %}
+                {{ ngettext('%(num)d alert opened during maintenance windows is left out.', '%(num)d alerts opened during maintenance windows are left out.', maintenance_count) }}
+                <a href="{{ url_for('main.reports', days=days, maintenance=1) }}">{{ _('Include them') }}</a>
+                {% endif %}
+            </p>
+            {% endif %}
 
             <!-- KPIs -->
             <div class="kpi-grid mb-3">

@@ -12,6 +12,8 @@ O catálogo ajuda o time de plataforma/SRE a identificar os serviços relacionad
 - As associações são avaliadas a partir das regras atuais, tanto para alertas ativos quanto para ocorrências anteriores. O painel mostra as ocorrências mais recentes do histórico ou até 100 alertas ativos por página de serviço ou agrupamento.
 - Um serviço com alertas ativos tem um sinal para investigação. A indicação de impacto confirmado aparece nas entradas selecionadas em incidentes ativos. Um serviço sem alertas ativos tem apenas ausência de sinais recebidos.
 
+- A lista de alertas mostra o serviço, o dono e os links de runbook e dashboard de cada alerta associado. Admins podem agendar janelas de manutenção para serviços e grupos. Veja o [plano de enriquecimento e manutenção](2026-11-20-enriquecimento-e-manutencao.md).
+
 ## Incidentes
 
 1. Abra ou crie um incidente pela ação em um alerta. A pessoa que cria assume a investigação. Repetir a ação no alerta inicial abre o mesmo incidente.

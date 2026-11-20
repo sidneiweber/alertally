@@ -377,8 +377,21 @@
 </script>
 
 <script>
+    // Seção recolhida de alertas em manutenção: o estado fica na tabela, que
+    // não é substituída pela atualização a cada 5s.
+    function toggleMaintenance(button) {
+        const table = button.closest('table');
+        table.classList.toggle('show-maintenance');
+        button.setAttribute('aria-expanded', table.classList.contains('show-maintenance'));
+    }
+
     document.body.addEventListener('htmx:afterSwap', (event) => {
         if (event.target.id === "alerts-tbody") {
+            const toggle = event.target.querySelector('.maintenance-toggle button');
+            if (toggle) {
+                toggle.setAttribute('aria-expanded', event.target.closest('table').classList.contains('show-maintenance'));
+            }
+
             // Feather Icons
             if (feather) {
                 feather.replace();

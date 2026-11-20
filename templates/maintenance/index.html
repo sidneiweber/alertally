@@ -1,0 +1,24 @@
+{% extends 'operations.html' %}
+{% from 'maintenance/macros.html' import window_summary %}
+{% set page_title = _('Maintenance windows') %}
+{% block content %}
+<div class="page-head mb-4">
+    <h1>{{ page_title }}</h1>
+    {% if can_manage_maintenance() %}
+    <a class="btn btn-primary" href="{{ url_for('maintenance.new') }}">{{ _('New window') }}</a>
+    {% endif %}
+</div>
+<p class="text-muted">{{ _('Alerts covered by a window in progress are still stored, but leave the main alert list and the counter. Alerts that open during a window are left out of the reports.') }}</p>
+{% for heading, rows in sections %}
+<section class="ops-panel mb-3">
+    <h2>{{ heading }}</h2>
+    <ul class="ops-list list-unstyled mb-0">
+        {% for window in rows %}
+        <li>{{ window_summary(window) }}</li>
+        {% else %}
+        <li class="text-muted">{{ _('No maintenance windows.') }}</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endfor %}
+{% endblock %}

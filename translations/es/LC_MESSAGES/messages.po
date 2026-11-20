@@ -696,3 +696,174 @@ msgid "%(num)d alert"
 msgid_plural "%(num)d alerts"
 msgstr[0] "%(num)d alerta"
 msgstr[1] "%(num)d alertas"
+
+#: routes/maintenance.py
+msgid "Enter valid start and end times."
+msgstr "Indica horas de inicio y fin válidas."
+
+#: routes/maintenance.py
+msgid "Enter a title of up to 120 characters."
+msgstr "Indica un título de hasta 120 caracteres."
+
+#: routes/maintenance.py
+msgid "The window must end after it starts and in the future."
+msgstr "La ventana debe terminar después de empezar y en el futuro."
+
+#: routes/maintenance.py
+#, python-format
+msgid "A maintenance window can last at most %(hours)d hours."
+msgstr "Una ventana de mantenimiento puede durar como máximo %(hours)d horas."
+
+#: routes/maintenance.py
+msgid "Choose at least one service or group, or enter a label rule."
+msgstr "Elige al menos un servicio o grupo, o indica una regla de etiquetas."
+
+#: routes/maintenance.py
+msgid "In progress"
+msgstr "En curso"
+
+#: routes/maintenance.py
+msgid "Scheduled"
+msgstr "Programadas"
+
+#: routes/maintenance.py
+#, python-format
+msgid "Ended in the last %(days)d days"
+msgstr "Finalizadas en los últimos %(days)d días"
+
+#: routes/maintenance.py
+msgid "This maintenance window has already ended."
+msgstr "Esta ventana de mantenimiento ya terminó."
+
+#: routes/maintenance.py
+msgid "Maintenance window ended."
+msgstr "Ventana de mantenimiento finalizada."
+
+#: routes/maintenance.py
+msgid "Maintenance window cancelled."
+msgstr "Ventana de mantenimiento cancelada."
+
+#: templates/alerts.html
+#, python-format
+msgid "Maintenance in progress: %(title)s, until %(end)s (%(name)s)"
+msgstr "Mantenimiento en curso: %(title)s, hasta %(end)s (%(name)s)"
+
+#: templates/alerts.html
+msgid "Details"
+msgstr "Detalles"
+
+#: templates/alerts.html
+#, python-format
+msgid "In maintenance until %(end)s"
+msgstr "En mantenimiento hasta %(end)s"
+
+#: templates/reports.html
+msgid "Leave them out"
+msgstr "Excluirlas"
+
+#: templates/reports.html
+msgid "Include them"
+msgstr "Incluirlas"
+
+#: templates/catalog/detail.html
+msgid "Schedule maintenance"
+msgstr "Programar mantenimiento"
+
+#: templates/includes/sidebar.html
+msgid "Maintenance"
+msgstr "Mantenimiento"
+
+#: templates/maintenance/index.html
+msgid "Maintenance windows"
+msgstr "Ventanas de mantenimiento"
+
+#: templates/maintenance/detail.html
+msgid "End now"
+msgstr "Finalizar ahora"
+
+#: templates/maintenance/detail.html
+msgid "Cancel window"
+msgstr "Cancelar ventana"
+
+#: templates/maintenance/detail.html
+#, python-format
+msgid "Ended early by %(email)s."
+msgstr "Finalizada antes de tiempo por %(email)s."
+
+#: templates/maintenance/detail.html
+msgid "Alerts in maintenance now"
+msgstr "Alertas en mantenimiento ahora"
+
+#: templates/maintenance/detail.html
+msgid "Alerts opened during this window"
+msgstr "Alertas abiertas durante esta ventana"
+
+#: templates/maintenance/index.html
+msgid "New window"
+msgstr "Nueva ventana"
+
+#: templates/maintenance/index.html
+msgid "Alerts covered by a window in progress are still stored, but leave the main alert list and the counter. Alerts that open during a window are left out of the reports."
+msgstr "Las alertas cubiertas por una ventana en curso se siguen guardando, pero salen de la lista principal y del contador. Las alertas que se abren durante una ventana quedan fuera de los informes."
+
+#: templates/maintenance/index.html
+msgid "No maintenance windows."
+msgstr "No hay ventanas de mantenimiento."
+
+#: templates/maintenance/macros.html
+msgid "Ended"
+msgstr "Finalizada"
+
+#: templates/maintenance/new.html
+msgid "New maintenance window"
+msgstr "Nueva ventana de mantenimiento"
+
+#: templates/maintenance/new.html
+msgid "Deploy of orders-api"
+msgstr "Despliegue de orders-api"
+
+#: templates/maintenance/new.html
+msgid "Starts at"
+msgstr "Inicio"
+
+#: templates/maintenance/new.html
+msgid "Ends at"
+msgstr "Fin"
+
+#: templates/maintenance/new.html
+#, python-format
+msgid "Times in %(zone)s. A window can last at most %(hours)d hours."
+msgstr "Horas en %(zone)s. Una ventana puede durar como máximo %(hours)d horas."
+
+#: templates/maintenance/new.html
+msgid "Label rules (optional)"
+msgstr "Reglas de etiquetas (opcional)"
+
+#: templates/maintenance/new.html
+msgid "For resources outside the catalog. Use one key=value per line and leave a blank line between alternatives."
+msgstr "Para recursos fuera del catálogo. Usa un key=value por línea y deja una línea en blanco entre alternativas."
+
+#: templates/maintenance/new.html
+msgid "Create window"
+msgstr "Crear ventana"
+
+#: templates/alerts.html
+#, python-format
+msgid "%(num)d alert in maintenance"
+msgid_plural "%(num)d alerts in maintenance"
+msgstr[0] "%(num)d alerta en mantenimiento"
+msgstr[1] "%(num)d alertas en mantenimiento"
+
+#: templates/reports.html
+#, python-format
+msgid "Including %(num)d alert opened during maintenance windows."
+msgid_plural "Including %(num)d alerts opened during maintenance windows."
+msgstr[0] "Incluye %(num)d alerta abierta durante ventanas de mantenimiento."
+msgstr[1] "Incluye %(num)d alertas abiertas durante ventanas de mantenimiento."
+
+#: templates/reports.html
+#, python-format
+msgid "%(num)d alert opened during maintenance windows is left out."
+msgid_plural "%(num)d alerts opened during maintenance windows are left out."
+msgstr[0] "%(num)d alerta abierta durante ventanas de mantenimiento queda fuera."
+msgstr[1] "%(num)d alertas abiertas durante ventanas de mantenimiento quedan fuera."

@@ -9,11 +9,15 @@
         <div>
             {{ alert.name }} <small class="text-muted">{{ alert.severity|severity_label }} · {{ alert.state|state_label }}
             {% if alert.opened_at %} · {{ alert.opened_at|operation_time }}{% endif %}</small>
-            {% if alert.matching_services %}
+            {% set related = alert.matching_services or alert.services %}
+            {% if related or alert.runbook or alert.dashboard %}
             <div class="small d-flex flex-wrap gap-2">
-                {% for service in alert.matching_services %}
+                {% for service in related %}
                 <a href="{{ url_for('catalog.detail', entry_id=service._id) }}">{{ service.name }}</a>
                 {% endfor %}
+                {% if alert.owner %}<span class="text-muted">{{ alert.owner }}</span>{% endif %}
+                {% if alert.runbook %}<a href="{{ alert.runbook }}" target="_blank" rel="noopener">{{ _('Runbook') }}</a>{% endif %}
+                {% if alert.dashboard %}<a href="{{ alert.dashboard }}" target="_blank" rel="noopener">{{ _('Dashboard') }}</a>{% endif %}
             </div>
             {% endif %}
         </div>

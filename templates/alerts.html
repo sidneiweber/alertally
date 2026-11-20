@@ -3,8 +3,38 @@
        hx-get="/alerts"
        hx-trigger="every 5s"
        hx-swap="outerHTML">
-{% if alerts %}
-{% for alert in alerts %}
+{% for window in windows %}
+<tr class="maintenance-banner">
+    <td colspan="8">
+        <i data-feather="tool" class="icon-xs me-1" aria-hidden="true"></i>
+        {{ _('Maintenance in progress: %(title)s, until %(end)s (%(name)s)', title=window.title,
+             end=window.ends_at|operation_time, name=window.created_by_name or window.created_by) }}
+        <a href="{{ url_for('maintenance.detail', window_id=window._id) }}">{{ _('Details') }}</a>
+    </td>
+</tr>
+{% endfor %}
+{% if not alerts %}
+<tr>
+    <td colspan="8" class="text-center empty-state">
+        <i data-feather="check-circle" class="icon-sm me-2"></i>
+        <strong>{{ _('All clear') }}</strong> — {{ _('no active alerts right now.') }}
+    </td>
+</tr>
+{% endif %}
+{% for alert in alerts + held %}
+{% if held and loop.index0 == alerts|length %}
+<tr class="maintenance-toggle">
+    <td colspan="8">
+        <button type="button" class="btn btn-sm" aria-expanded="false" onclick="toggleMaintenance(this)">
+            <i data-feather="chevron-right" class="icon-xs" aria-hidden="true"></i>
+            {{ ngettext('%(num)d alert in maintenance', '%(num)d alerts in maintenance', held|length) }}
+        </button>
+        <span class="text-muted small">
+            {% for group in held|groupby('severity_number')|reverse %}{{ group.list[0].severity|severity_label }}: {{ group.list|length }}{% if not loop.last %} · {% endif %}{% endfor %}
+        </span>
+    </td>
+</tr>
+{% endif %}
 {% if alert.severity_number == 5 %}
 {% set sev_class = "sev-critical" %}{% set sev_icon = "alert-octagon" %}{% set sev_solid = True %}
 {% elif alert.severity_number == 4 %}
@@ -16,7 +46,7 @@
 {% else %}
 {% set sev_class = "sev-muted" %}{% set sev_icon = "help-circle" %}{% set sev_solid = False %}
 {% endif %}
-<tr class="alert-row {{ sev_class }}" id="alert-{{ alert.incident_id }}">
+<tr class="alert-row {{ sev_class }}{% if alert.maintenance %} maintenance-row{% endif %}" id="alert-{{ alert.incident_id }}">
     <td>
         <span class="sev-badge{% if sev_solid %} solid{% endif %}">
             <i data-feather="{{ sev_icon }}" class="icon-xs"></i>{{ alert.severity|severity_label }}
@@ -24,6 +54,18 @@
     </td>
     <td>
         <div class="alert-name">{{ source_icon(alert.source) }}<span>{{ alert.name }}</span></div>
+        {% if alert.maintenance %}
+        <div class="alert-context small text-muted">
+            {{ _('In maintenance until %(end)s', end=alert.maintenance.ends_at|operation_time) }}
+        </div>
+        {% endif %}
+        {% if alert.services %}
+        <div class="alert-context small">
+            {% for service in alert.services[:2] %}<a href="{{ url_for('catalog.detail', entry_id=service._id) }}">{{ service.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+            {% if alert.services|length > 2 %}<span title="{{ alert.services[2:]|map(attribute='name')|join(', ') }}">+{{ alert.services|length - 2 }}</span>{% endif %}
+            {% if alert.owner %}<span class="text-muted"> · {{ alert.owner }}</span>{% endif %}
+        </div>
+        {% endif %}
         <a class="small" href="{{ url_for('incidents.create', alert_id=alert._id) }}">{{ _('Open or create incident') }}</a>
     </td>
     <td><span class="chip"><span class="dot"></span>{{ alert.state|state_label }}</span></td>
@@ -69,6 +111,16 @@
             <a href="{{ alert.url }}" title="{{ _('Open alert') }}" target="_blank">
                 <i class="me-1 icon-small" data-feather="external-link"></i>
             </a>
+            {% if alert.runbook %}
+            <a href="{{ alert.runbook }}" title="{{ _('Runbook') }}" aria-label="{{ _('Runbook') }}" target="_blank" rel="noopener">
+                <i class="me-1 icon-small" data-feather="book-open"></i>
+            </a>
+            {% endif %}
+            {% if alert.dashboard %}
+            <a href="{{ alert.dashboard }}" title="{{ _('Dashboard') }}" aria-label="{{ _('Dashboard') }}" target="_blank" rel="noopener">
+                <i class="me-1 icon-small" data-feather="bar-chart-2"></i>
+            </a>
+            {% endif %}
 
             <div id="ack-buttons-{{ alert.incident_id }}">
                 {% if alert.ack_by %}
@@ -102,12 +154,4 @@
     </td>
 </tr>
 {% endfor %}
-{% else %}
-<tr>
-    <td colspan="8" class="text-center empty-state">
-        <i data-feather="check-circle" class="icon-sm me-2"></i>
-        <strong>{{ _('All clear') }}</strong> — {{ _('no active alerts right now.') }}
-    </td>
-</tr>
-{% endif %}
 </tbody>

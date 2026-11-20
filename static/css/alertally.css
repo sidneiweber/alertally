@@ -526,3 +526,21 @@ body.alertally .btn-signal:focus-visible { outline: 2px solid var(--al-text); ou
 }
 .operations .ops-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .operations summary { color: var(--al-signal); cursor: pointer; }
+
+/* Serviço e dono do alerta, vindos do catálogo */
+.alert-context { margin-top: .15rem; overflow-wrap: anywhere; }
+.alert-context a { color: var(--al-signal); }
+
+/* Janelas de manutenção na lista de alertas */
+.maintenance-banner td {
+    background: color-mix(in srgb, var(--al-signal) 10%, var(--al-surface));
+    color: var(--al-text);
+    border-inline-start: 3px solid var(--al-signal);
+}
+.maintenance-banner a { color: var(--al-signal); margin-inline-start: .5rem; }
+.maintenance-toggle td { background: var(--al-surface-2); }
+.maintenance-toggle .btn { color: var(--al-text); font-weight: 600; }
+.maintenance-toggle .feather { transition: transform .15s ease; }
+table.show-maintenance .maintenance-toggle .feather { transform: rotate(90deg); }
+table:not(.show-maintenance) tr.maintenance-row { display: none; }
+tr.maintenance-row { opacity: .75; }
