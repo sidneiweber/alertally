@@ -14,7 +14,7 @@ to Alertally **and** to Slack at the same time (see [Alertally + Slack](#alertal
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `ALERTMANAGER_TOKEN` | No, but recommended | When set, the endpoint requires `Authorization: Bearer <token>` and returns `401` without it. Without it, anyone who can reach the URL can create alerts. |
+| `ALERTMANAGER_TOKEN` | Yes | The endpoint requires `Authorization: Bearer <token>` and returns `401` without it. Without the variable the endpoint answers `503`, unless `ALLOW_UNAUTHENTICATED_WEBHOOKS=true`. |
 
 Generate a token and add it to the server's `.env`:
 
@@ -273,5 +273,6 @@ Endpoint error responses:
 
 | Code | Cause |
 |---|---|
-| `401` | `ALERTMANAGER_TOKEN` is set and the header is missing or wrong |
+| `401` | The `Authorization` header is missing or wrong |
+| `503` | `ALERTMANAGER_TOKEN` is not set (see `ALLOW_UNAUTHENTICATED_WEBHOOKS`) |
 | `400` | body is not JSON or has no `alerts` key |

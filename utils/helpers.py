@@ -36,6 +36,7 @@ def create_indexes():
         db.catalog_dismissed.create_index("rule", unique=True)
         db.maintenance_windows.create_index([("ends_at", 1), ("starts_at", 1)])
         alerts.create_index("maintenance_id", sparse=True)
+        alerts.create_index([("event_key", 1), ("state", 1)], sparse=True)
 
         logging.info("MongoDB indexes created successfully")
     except PyMongoError as e:

@@ -867,3 +867,6 @@ msgid "%(num)d alert opened during maintenance windows is left out."
 msgid_plural "%(num)d alerts opened during maintenance windows are left out."
 msgstr[0] "%(num)d alerta aberto durante janelas de manutenção ficou de fora."
 msgstr[1] "%(num)d alertas abertos durante janelas de manutenção ficaram de fora."
+
+msgid "Acknowledged the alert"
+msgstr "Reconheceu o alerta"

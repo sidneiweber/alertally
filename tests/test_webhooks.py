@@ -305,3 +305,105 @@ def test_legacy_alert_without_source_start_preserves_previous_time(client, alert
     client.post('/gcp', json=gcp_payload())
     client.post('/gcp', json=gcp_payload())
     assert alerts.find_one({'incident_id': '0.abc'})['opened_at'] == first_seen
+
+
+# ---------- Credenciais obrigatórias ----------
+
+@pytest.mark.parametrize("path, body", [
+    ("/gcp", gcp_payload()),
+    ("/alertmanager", {"alerts": []}),
+    ("/events", {"id": "x", "name": "x", "status": "firing"}),
+])
+def test_webhook_without_credentials_is_refused(client, alerts, monkeypatch, path, body):
+    monkeypatch.setattr(Config, "ALLOW_UNAUTHENTICATED_WEBHOOKS", False)
+    resp = client.post(path, json=body)
+    assert resp.status_code == 503
+    assert alerts.count_documents({}) == 0
+
+
+def test_aws_without_credentials_is_refused(client, alerts, monkeypatch):
+    monkeypatch.setattr(Config, "ALLOW_UNAUTHENTICATED_WEBHOOKS", False)
+    assert client.post("/aws", **sns(alarm("ALARM"))).status_code == 503
+
+
+def test_webhook_with_credentials_needs_no_opt_in(client, alerts, monkeypatch):
+    monkeypatch.setattr(Config, "ALLOW_UNAUTHENTICATED_WEBHOOKS", False)
+    monkeypatch.setattr(Config, "ALERTMANAGER_TOKEN", "tok")
+    resp = client.post("/alertmanager", json={"alerts": []}, headers={"Authorization": "Bearer tok"})
+    assert resp.status_code == 200
+
+
+@pytest.mark.parametrize("header", ["Bearer wrong", "Bearer tök", "tok", ""])
+def test_alertmanager_rejects_wrong_token(client, alerts, monkeypatch, header):
+    monkeypatch.setattr(Config, "ALERTMANAGER_TOKEN", "tok")
+    resp = client.post("/alertmanager", json={"alerts": []}, headers={"Authorization": header})
+    assert resp.status_code == 401
+
+
+# ---------- Assinatura do SNS ----------
+
+CERT_URL = "https://sns.us-east-1.amazonaws.com/SimpleNotificationService-test.pem"
+
+
+@pytest.fixture
+def sns_signer(monkeypatch):
+    """Sign envelopes with a throwaway certificate served as if it came from SNS."""
+    from datetime import datetime, timedelta, timezone as tz
+
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import padding, rsa
+    from cryptography.x509.oid import NameOID
+
+    from utils import sns as sns_module
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "sns.amazonaws.com")])
+    now = datetime.now(tz.utc)
+    cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name)
+            .public_key(key.public_key()).serial_number(1)
+            .not_valid_before(now - timedelta(days=1)).not_valid_after(now + timedelta(days=1))
+            .sign(key, hashes.SHA256()))
+    fetched = []
+    monkeypatch.setattr(sns_module, "_certificate", lambda url: fetched.append(url) or cert)
+    monkeypatch.setattr(Config, "AWS_SNS_VERIFY_SIGNATURE", True)
+
+    def sign(kwargs, version="2", **changes):
+        envelope = json.loads(kwargs["data"])
+        envelope.update(MessageId="m-1", Timestamp="2026-11-01T10:00:00.000Z",
+                        SignatureVersion=version, SigningCertURL=CERT_URL)
+        text = sns_module._string_to_sign(envelope)
+        algorithm = hashes.SHA1() if version == "1" else hashes.SHA256()
+        envelope["Signature"] = base64.b64encode(
+            key.sign(text.encode(), padding.PKCS1v15(), algorithm)).decode()
+        envelope.update(changes)
+        return {**kwargs, "data": json.dumps(envelope)}
+
+    sign.fetched = fetched
+    return sign
+
+
+@pytest.mark.parametrize("version", ["1", "2"])
+def test_aws_accepts_signed_message(client, alerts, sns_signer, version):
+    resp = client.post("/aws", **sns_signer(sns(alarm("ALARM")), version=version))
+    assert resp.status_code == 200
+    assert alerts.count_documents({"source": "aws"}) == 1
+    assert sns_signer.fetched == [CERT_URL]
+
+
+@pytest.mark.parametrize("changes", [
+    {"Message": json.dumps(alarm("OK"))},                      # mensagem trocada
+    {"Signature": "bm90IGEgc2lnbmF0dXJl"},                     # assinatura inválida
+    {"Signature": "%%%"},                                      # não é base64
+    {"SigningCertURL": "https://evil.example.com/cert.pem"},  # certificado de fora da AWS
+    {"SigningCertURL": "http://sns.us-east-1.amazonaws.com/cert.pem"},
+    {"SignatureVersion": "3"},
+])
+def test_aws_rejects_bad_signature(client, alerts, sns_signer, changes):
+    resp = client.post("/aws", **sns_signer(sns(alarm("ALARM")), **changes))
+    assert resp.status_code == 403
+    assert alerts.count_documents({}) == 0
+
+
+def test_aws_rejects_unsigned_message(client, alerts, sns_signer):
+    assert client.post("/aws", **sns(alarm("ALARM"))).status_code == 403

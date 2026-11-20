@@ -15,9 +15,13 @@ os.environ.update({
     "ALLOWED_EMAILS": "guest@example.net",
     "ADMIN_EMAILS": "admin@example.org",
     "TIMEZONE": "UTC",
+    # Most tests post webhooks without credentials or SNS signatures; the
+    # tests for those checks turn them back on.
+    "ALLOW_UNAUTHENTICATED_WEBHOOKS": "true",
+    "AWS_SNS_VERIFY_SIGNATURE": "false",
 })
 for var in ("GCP_WEBHOOK_USER", "GCP_WEBHOOK_PASSWORD", "ALERTMANAGER_TOKEN",
-            "AWS_SNS_USER", "AWS_SNS_PASSWORD", "AWS_SNS_TOPIC_ARNS",
+            "AWS_SNS_USER", "AWS_SNS_PASSWORD", "AWS_SNS_TOPIC_ARNS", "EVENTS_TOKEN",
             "CATALOG_SERVICE_LABELS", "CATALOG_AUTO_CREATE", "CATALOG_STALE_DAYS"):
     os.environ.pop(var, None)
 

@@ -92,6 +92,63 @@ def test_reports_separate_resource_service_and_source(client, alerts, monkeypatc
     assert 'service=worker' in response.get_data(as_text=True)
 
 
+def test_ack_and_unack_are_recorded_in_history(client, alerts, open_alert):
+    login(client)
+    _post_json(client, f"/ack/{open_alert}")
+    _post_json(client, f"/unack/{open_alert}")
+    history = alerts.find_one({"incident_id": open_alert})["history"]
+    assert [(e["kind"], e["actor"]) for e in history] == [
+        ("alert_acked", USER["email"]), ("alert_unacked", USER["email"])]
+
+
+class _StaleReads:
+    """Collection whose first find_one returns the alert as it was before another click."""
+
+    def __init__(self, collection, stale):
+        self._collection, self._stale = collection, stale
+
+    def find_one(self, *args, **kwargs):
+        if self._stale is not None:
+            stale, self._stale = self._stale, None
+            return stale
+        return self._collection.find_one(*args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._collection, name)
+
+
+def test_simultaneous_acks_keep_the_first(client, alerts, open_alert, monkeypatch):
+    import routes.alerts
+    stale = alerts.find_one({"incident_id": open_alert})
+    alerts.update_one({"incident_id": open_alert},
+                      {"$set": {"ack_by": OTHER_USER["email"], "ack_by_name": OTHER_USER["name"]}})
+    monkeypatch.setattr(routes.alerts, "alerts", _StaleReads(alerts, stale))
+
+    login(client)
+    resp = _post_json(client, f"/ack/{open_alert}")
+    assert resp.status_code == 400 and OTHER_USER["name"] in resp.json["error"]
+    assert alerts.find_one({"incident_id": open_alert})["ack_by"] == OTHER_USER["email"]
+
+
+def test_unack_does_not_remove_an_ack_made_since(client, alerts, open_alert, monkeypatch):
+    import routes.alerts
+    alerts.update_one({"incident_id": open_alert}, {"$set": {"ack_by": USER["email"]}})
+    stale = alerts.find_one({"incident_id": open_alert})
+    # Ana removed her ACK in another tab and Bruno took the alert.
+    alerts.update_one({"incident_id": open_alert}, {"$set": {"ack_by": OTHER_USER["email"]}})
+    monkeypatch.setattr(routes.alerts, "alerts", _StaleReads(alerts, stale))
+
+    login(client)
+    _post_json(client, f"/unack/{open_alert}")
+    assert alerts.find_one({"incident_id": open_alert})["ack_by"] == OTHER_USER["email"]
+
+
+def test_count_requires_login(client, alerts):
+    assert client.get("/count").status_code == 302
+    login(client)
+    assert client.get("/count").data == b"0"
+
+
 def test_cannot_remove_someone_elses_ack(client, alerts, open_alert):
     login(client)
     _post_json(client, f"/ack/{open_alert}")

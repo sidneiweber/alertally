@@ -39,6 +39,8 @@ EVENTS = {
     'alert_opened': lazy_gettext('Alert opened'),
     'alert_recovered': lazy_gettext('Source reported recovery'),
     'alert_closed': lazy_gettext('Alert closed manually'),
+    'alert_acked': lazy_gettext('Acknowledged the alert'),
+    'alert_unacked': lazy_gettext('Acknowledgment removed'),
     'alert_superseded': lazy_gettext('Alert replaced by a newer occurrence'),
 }
 

@@ -9,6 +9,7 @@ Supported sources:
 - **GCP Cloud Monitoring** (`POST /gcp`)
 - **Prometheus Alertmanager** (`POST /alertmanager`) — see [docs/alertmanager.md](docs/alertmanager.md)
 - **AWS CloudWatch via SNS** (`POST /aws`) — see [docs/aws.md](docs/aws.md)
+- **Any other tool or script** that can send JSON (`POST /events`) — see [docs/webhook.md](docs/webhook.md)
 
 Built with Flask and MongoDB. Google sign-in, with the UI in English, Portuguese and
 Spanish (see [docs/i18n.md](docs/i18n.md)).
@@ -125,14 +126,20 @@ Everything comes from environment variables (the `.env` file). See
 | `CATALOG_STALE_DAYS` | No | Days without alerts before a service is flagged as having no recent activity (default `30`). |
 | `SESSION_COOKIE_SECURE` | No | `true` when served only over HTTPS. |
 | `MONGO_URL` / `MONGO_PORT` | No | Where MongoDB is (Compose already points to `mongo`). |
-| `GCP_WEBHOOK_USER` / `GCP_WEBHOOK_PASSWORD` | No | Basic auth for the `/gcp` webhook. |
-| `ALERTMANAGER_TOKEN` | No | Bearer token required on `/alertmanager`. |
+| `GCP_WEBHOOK_USER` / `GCP_WEBHOOK_PASSWORD` | For `/gcp` | Basic auth for the `/gcp` webhook. |
+| `ALERTMANAGER_TOKEN` | For `/alertmanager` | Bearer token required on `/alertmanager`. |
 | `ALERTMANAGER_DEBUG` | No | Detailed webhook logs for troubleshooting (default `false`); includes alert labels. |
-| `AWS_SNS_USER` / `AWS_SNS_PASSWORD` / `AWS_SNS_TOPIC_ARNS` | No | Basic auth and accepted topics for `/aws`. |
+| `AWS_SNS_USER` / `AWS_SNS_PASSWORD` | For `/aws` | Basic auth for `/aws`. |
+| `AWS_SNS_TOPIC_ARNS` | No | Accepted SNS topics for `/aws` (recommended). |
+| `AWS_SNS_VERIFY_SIGNATURE` | No | Check the signature of SNS messages (default `true`). |
+| `EVENTS_TOKEN` | For `/events` | Bearer token required on the generic webhook. |
+| `ALLOW_UNAUTHENTICATED_WEBHOOKS` | No | Accept deliveries on webhooks whose credentials are not set (default `false`, `true` in local development). |
 | `DISABLE_GOOGLE_LOGIN` | No | Local development only. **Never use in production.** |
 
-Webhooks skip Google sign-in. Without their credentials, anyone who can reach the
-URL can create alerts, so set them in production.
+Webhooks skip Google sign-in and use their own credentials instead. A webhook whose
+credentials are not set refuses deliveries with `503` (the sender retries later), so
+set the credentials of each source you use. `ALLOW_UNAUTHENTICATED_WEBHOOKS=true`
+turns this off; use it only on a private network.
 
 ## Project layout
 
@@ -142,6 +149,7 @@ config.py         # configuration read from the environment
 docs/             # integration guides (Alertmanager, AWS) and i18n
 routes/
   alerts.py       # alert list, ACK, close and webhooks (/gcp, /alertmanager, /aws)
+  events.py       # generic webhook (/events)
   auth.py         # Google sign-in and logout
   main.py         # home page, reports and language switch
 utils/            # Mongo access, session and i18n helpers
