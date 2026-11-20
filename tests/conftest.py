@@ -17,7 +17,8 @@ os.environ.update({
     "TIMEZONE": "UTC",
 })
 for var in ("GCP_WEBHOOK_USER", "GCP_WEBHOOK_PASSWORD", "ALERTMANAGER_TOKEN",
-            "AWS_SNS_USER", "AWS_SNS_PASSWORD", "AWS_SNS_TOPIC_ARNS"):
+            "AWS_SNS_USER", "AWS_SNS_PASSWORD", "AWS_SNS_TOPIC_ARNS",
+            "CATALOG_SERVICE_LABELS", "CATALOG_AUTO_CREATE", "CATALOG_STALE_DAYS"):
     os.environ.pop(var, None)
 
 # Mongo em memória no lugar do servidor real

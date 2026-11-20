@@ -1,0 +1,46 @@
+{% macro csrf() %}
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{% endmacro %}
+
+{% macro alert_list(rows, offer_incident=false) %}
+<ul class="ops-list list-unstyled mb-0">
+    {% for alert in rows %}
+    <li class="d-flex flex-wrap justify-content-between align-items-baseline gap-2">
+        <div>
+            {{ alert.name }} <small class="text-muted">{{ alert.severity|severity_label }} · {{ alert.state|state_label }}
+            {% if alert.opened_at %} · {{ alert.opened_at|operation_time }}{% endif %}</small>
+            {% if alert.matching_services %}
+            <div class="small d-flex flex-wrap gap-2">
+                {% for service in alert.matching_services %}
+                <a href="{{ url_for('catalog.detail', entry_id=service._id) }}">{{ service.name }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% if offer_incident %}
+        <a href="{{ url_for('incidents.create', alert_id=alert._id) }}">{{ _('Open or create incident') }}</a>
+        {% endif %}
+    </li>
+    {% else %}
+    <li class="text-muted">{{ _('No alerts found.') }}</li>
+    {% endfor %}
+</ul>
+{% endmacro %}
+
+{% macro health(active_count, impacted) %}
+<span class="ops-status{% if active_count %} ops-warning{% endif %}">
+    {% if active_count %}
+    <i data-feather="alert-triangle" class="icon-xs me-1" aria-hidden="true"></i>
+    {{ ngettext('%(num)d active alert', '%(num)d active alerts', active_count) }}
+    {% else %}
+    {{ _('No active alerts') }}
+    {% endif %}
+</span>
+{% if impacted %}<span class="ops-status ops-impact">{{ _('Confirmed impact') }}</span>{% endif %}
+{% endmacro %}
+
+{% macro entry_badges(entry, stale, stale_days) %}
+{% if entry.origin == 'auto' %}<span class="ops-status" title="{{ _('Created from the service label of an alert') }}">{{ _('Automatic') }}</span>{% endif %}
+{% if stale %}<span class="ops-status" title="{{ _('No alerts in the last %(days)d days', days=stale_days) }}">{{ _('No recent activity') }}</span>{% endif %}
+{% if entry.archived %}<span class="ops-status">{{ _('Archived') }}</span>{% endif %}
+{% endmacro %}

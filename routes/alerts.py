@@ -15,6 +15,7 @@ from pytz import timezone
 
 from config import Config
 from routes.auth import login_required
+from utils.alert_history import alert_event, store_alert
 from utils.helpers import alerts, alerts_dict, get_session_user
 
 alerts_bp = Blueprint('alerts', __name__)
@@ -43,8 +44,10 @@ def close_alert(incident_id):
         return jsonify({'error': _('Only administrators can close alerts')}), 403
     if request.method == 'POST':
         alerts.update_one(
-            {'incident_id': incident_id},
-            {'$set': {'state': 'closed'}}
+            {'incident_id': incident_id, 'state': 'open'},
+            {'$set': {'state': 'closed'},
+             '$push': {'history': alert_event('alert_closed', datetime.now(tz=timezone('UTC')),
+                                              user['email'])}}
         )
         flash(_("You have successfully closed the alert."))
         current_app.logger.info(f'Incident {incident_id} closed')
@@ -82,6 +85,17 @@ def _incident_opened_at(incident_id, raw, now):
     return now
 
 
+def _gcp_labels(incident, metric):
+    """Merge resource, metric and policy labels; policy labels take precedence."""
+    labels = {}
+    resource = incident.get('resource') or {}
+    for source in (resource.get('labels') if isinstance(resource, dict) else None,
+                   metric.get('labels'), incident.get('policy_user_labels')):
+        if isinstance(source, dict):
+            labels.update(source)
+    return labels
+
+
 @alerts_bp.route('/gcp', methods=['POST'])
 def parse_request():
     if not _basic_auth_ok(Config.GCP_WEBHOOK_USER, Config.GCP_WEBHOOK_PASSWORD):
@@ -107,16 +121,13 @@ def parse_request():
         'summary': summary,
         'url': incident.get('url'),
         'threshold': incident.get('observed_value', 'Null'),
-        'labels': metric.get('labels') or {},
+        'labels': _gcp_labels(incident, metric),
         'update_at': datetime.now(tz=timezone(Config.TIMEZONE)),
     }
 
-    alerts.update_one(
-        {'incident_id': incident_id},
-        {'$set': update_data, '$min': {'opened_at': _incident_opened_at(
-            incident_id, incident.get('started_at'), update_data['update_at'])}},
-        upsert=True
-    )
+    store_alert(incident_id, update_data, _incident_opened_at(
+        incident_id, incident.get('started_at'), update_data['update_at'],
+    ))
 
     current_app.logger.info(f"GCP incident {incident_id} {update_data['state']}")
     return jsonify({'incident': incident_id, 'state': update_data['state']})
@@ -173,7 +184,8 @@ def _close_previous_alertmanager_occurrences(fingerprint, starts_at, incident_id
         result = alerts.update_one(
             {'_id': previous['_id'], 'state': 'open'},
             {'$set': {'state': 'closed', 'closure_reason': 'superseded',
-                      'superseded_by': incident_id, 'update_at': now}},
+                      'superseded_by': incident_id, 'update_at': now},
+             '$push': {'history': alert_event('alert_superseded', now)}},
         )
         if result.modified_count:
             am_logger.warning(
@@ -247,12 +259,9 @@ def parse_alertmanager():
             'update_at': datetime.now(tz=timezone(Config.TIMEZONE)),
         }
 
-        result = alerts.update_one(
-            {'incident_id': incident_id},
-            {'$set': update_data, '$min': {'opened_at': _incident_opened_at(
-                incident_id, starts_at, update_data['update_at'])}},
-            upsert=True
-        )
+        result = store_alert(incident_id, update_data, _incident_opened_at(
+            incident_id, starts_at, update_data['update_at'],
+        ))
         am_logger.debug('Alertmanager database result %s', json.dumps({
             'request_id': request_id, 'incident_id': incident_id, 'state': state,
             'matched_count': result.matched_count, 'modified_count': result.modified_count,
@@ -358,7 +367,8 @@ def parse_aws_sns():
     if new_state == 'OK':
         result = alerts.update_many(
             {'source': 'aws', 'aws_alarm_arn': alarm_arn, 'state': 'open'},
-            {'$set': {'state': 'closed', 'ends_at': state_time, 'update_at': now}}
+            {'$set': {'state': 'closed', 'ends_at': state_time, 'update_at': now},
+             '$push': {'history': alert_event('alert_recovered', now)}}
         )
         current_app.logger.info(f'AWS alarm {name} OK, {result.modified_count} incident(s) closed')
         return jsonify({'closed': result.modified_count})
@@ -392,11 +402,7 @@ def parse_aws_sns():
         'starts_at': state_time,
         'update_at': now,
     }
-    alerts.update_one(
-        {'incident_id': incident_id},
-        {'$set': update_data, '$min': {'opened_at': _incident_opened_at(incident_id, state_time, now)}},
-        upsert=True,
-    )
+    store_alert(incident_id, update_data, _incident_opened_at(incident_id, state_time, now))
     current_app.logger.info(f'AWS incident {incident_id} opened')
     return jsonify({'incident': incident_id})
 

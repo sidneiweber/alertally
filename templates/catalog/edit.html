@@ -1,0 +1,65 @@
+{% extends 'operations.html' %}
+{% from 'operations_macros.html' import csrf %}
+{% set page_title = _('Edit catalog entry') if entry else (_('New service') if kind == 'service' else _('New group')) %}
+{% block content %}
+<a href="{{ url_for('catalog.detail', entry_id=entry._id) if entry else url_for('catalog.index') }}">{{ _('Back') }}</a>
+<div class="page-head mb-4"><h1>{{ page_title }}</h1></div>
+<form method="post" class="ops-panel ops-form">
+    {{ csrf() }}
+    <div class="mb-3">
+        <label class="form-label" for="name">{{ _('Name') }}</label>
+        <input class="form-control" id="name" name="name" value="{{ form.name }}" required maxlength="120">
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="description">{{ _('Description') }}</label>
+        <textarea class="form-control" id="description" name="description" rows="3" maxlength="2000">{{ form.description }}</textarea>
+    </div>
+    {% if kind == 'group' %}
+    <fieldset class="mb-3">
+        <legend>{{ _('Technical services') }}</legend>
+        {% for service in services %}
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="member-{{ service._id }}" name="service_ids"
+                   value="{{ service._id }}" {% if service._id in form.service_ids|default([]) or service._id|string in form.service_ids|default([]) %}checked{% endif %}>
+            <label class="form-check-label" for="member-{{ service._id }}">{{ service.name }}</label>
+        </div>
+        {% else %}
+        <p class="text-muted">{{ _('Create a technical service to add it to this group.') }}</p>
+        {% endfor %}
+    </fieldset>
+    {% else %}
+    <div class="row">
+        {% for field, label in [('owner', _('Owning team')), ('environment', _('Environment'))] %}
+        <div class="col-md-6 mb-3">
+            <label class="form-label" for="{{ field }}">{{ label }}</label>
+            <input class="form-control" id="{{ field }}" name="{{ field }}" maxlength="120" value="{{ form[field] }}">
+        </div>
+        {% endfor %}
+    </div>
+    {% for field, label in [('dashboard_url', _('Dashboard URL')), ('runbook_url', _('Runbook URL')), ('repository_url', _('Repository URL'))] %}
+    <div class="mb-3">
+        <label class="form-label" for="{{ field }}">{{ label }}</label>
+        <input class="form-control" id="{{ field }}" name="{{ field }}" type="url" maxlength="2000" value="{{ form[field] }}">
+    </div>
+    {% endfor %}
+    <div class="mb-3">
+        <label class="form-label" for="rules">{{ _('Alert matching rules') }}</label>
+        <textarea class="form-control mono" id="rules" name="rules" rows="5" aria-describedby="rule-help"
+                  placeholder="resource=orders-db&#10;environment=production">{{ rules }}</textarea>
+        <p id="rule-help" class="small text-muted mt-1 mb-0">{{ _('Use one key=value per line. All labels in a rule must match. Leave a blank line between alternatives.') }}</p>
+    </div>
+    {% if options %}
+    <div class="mb-3">
+        <label class="form-label" for="observed">{{ _('Add a rule from observed labels') }}</label>
+        <select class="form-select" id="observed" name="observed">
+            <option value="">{{ _('Choose a label combination') }}</option>
+            {% for value, label in options %}
+            <option value="{{ value }}" {% if form.observed == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+    {% endif %}
+    <button class="btn btn-primary" type="submit">{{ _('Save') }}</button>
+</form>
+{% endblock %}

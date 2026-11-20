@@ -1,9 +1,16 @@
 import os
+import re
 
 
 def _env_list(name):
     """Lista separada por vírgula vinda do ambiente (vazia se não definida)."""
     return [item.strip() for item in os.environ.get(name, "").split(",") if item.strip()]
+
+
+def _env_labels(name, default):
+    """Label names from a comma-separated variable, skipping names Prometheus would reject."""
+    names = [item for item in _env_list(name) if re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_-]{0,127}", item)]
+    return names or list(default)
 
 
 def _env_bool(name, default=False):
@@ -31,6 +38,13 @@ class Config:
     CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
 
     TIMEZONE = os.environ.get("TIMEZONE", "UTC")
+
+    # Catálogo: labels que nomeiam o serviço técnico, em ordem de prioridade
+    # (CATALOG_SERVICE_LABELS=service,resource). Vale a primeira presente no alerta.
+    CATALOG_SERVICE_LABELS = _env_labels("CATALOG_SERVICE_LABELS", ["service"])
+    CATALOG_AUTO_CREATE = _env_bool("CATALOG_AUTO_CREATE", True)
+    # Dias sem alertas para marcar um serviço como "sem atividade"
+    CATALOG_STALE_DAYS = int(os.environ.get("CATALOG_STALE_DAYS", "30"))
     ALLOWED_DAYS = [1, 7, 15, 30, 60]
 
     # Quem pode entrar: e-mails de um domínio (ALLOWED_EMAIL_DOMAINS=example.com)

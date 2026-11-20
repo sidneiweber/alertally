@@ -15,12 +15,15 @@ Spanish (see [docs/i18n.md](docs/i18n.md)).
 
 ## Features
 
-- List of open alerts, sorted by severity, then by oldest update first within each severity.
+- List of open alerts, sorted by severity, then by oldest opening time first within each severity. Repeated notifications
+  preserve the opening time shown in the list.
   The alert counter refreshes every minute.
 - Labels use a compact, scrollable area so alerts with many labels stay readable.
   When present, `resource` and `service` appear first with visual emphasis.
 - **ACK**: shows who is handling an alert. Admins can remove other people's ACKs.
 - **Close alert**: admins only. Alerts also close on their own when the source reports them as resolved.
+- **Service catalog** (`/catalog`): link technical services to alert labels and group them into shared views.
+- **Incidents** (`/incidents`): create an incident from an alert, track ownership and confirmed impact, and follow the investigation timeline. See the [catalog and incident guide](docs/plans/2026-11-18-catalogo-e-incidentes-design.md).
 - **Reports** (`/reports`): most frequent alerts and daily counts over the last 1, 7, 15, 30 or 60 days.
 - Access control by email domain, email list or admin list.
 
@@ -104,6 +107,9 @@ Everything comes from environment variables (the `.env` file). See
 | `ALLOWED_EMAILS` | One of the three | Specific emails allowed to sign in. |
 | `ADMIN_EMAILS` | One of the three | Admins: always allowed in, can close alerts and remove other people's ACKs. |
 | `TIMEZONE` | No | Time zone for displayed times (default `UTC`). |
+| `CATALOG_SERVICE_LABELS` | No | Comma-separated alert labels that name a technical service in the catalog, in priority order (default `service`). The first label present in an alert wins. |
+| `CATALOG_AUTO_CREATE` | No | Create catalog services from that label automatically (default `true`). |
+| `CATALOG_STALE_DAYS` | No | Days without alerts before a service is flagged as having no recent activity (default `30`). |
 | `SESSION_COOKIE_SECURE` | No | `true` when served only over HTTPS. |
 | `MONGO_URL` / `MONGO_PORT` | No | Where MongoDB is (Compose already points to `mongo`). |
 | `GCP_WEBHOOK_USER` / `GCP_WEBHOOK_PASSWORD` | No | Basic auth for the `/gcp` webhook. |

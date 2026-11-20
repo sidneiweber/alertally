@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="{{ html_lang }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page_title }} · Alertally</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/favicon/alertally.svg') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/volt.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/alertally.css') }}">
+</head>
+<body class="alertally">
+<nav class="navbar navbar-dark navbar-theme-primary px-4 d-lg-none">
+    <a class="navbar-brand wordmark text-white" href="{{ url_for('main.index') }}">alertally</a>
+    <button class="navbar-toggler collapsed" type="button" data-bs-toggle="collapse"
+            data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false"
+            aria-label="{{ _('Open menu') }}">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+</nav>
+{% include 'includes/sidebar.html' %}
+<main class="content">
+    {% include 'includes/header.html' %}
+    <div class="container-fluid px-0 py-4 operations">
+        {% for category, message in get_flashed_messages(with_categories=true) %}
+        <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+        {% endfor %}
+        {% block content %}{% endblock %}
+    </div>
+</main>
+<script src="{{ url_for('static', filename='libs/bootstrap/dist/js/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='libs/feather-icons/dist/feather.min.js') }}"></script>
+<script>feather.replace();</script>
+</body>
+</html>
