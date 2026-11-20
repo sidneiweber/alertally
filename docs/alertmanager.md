@@ -7,7 +7,7 @@ POST https://alertally.example.com/alertmanager
 ```
 
 Alertmanager sends its standard webhook (payload `version: "4"`), and each alert in
-the payload becomes an incident in Alertally. The same Alertmanager can send the alert
+the payload is recorded as an alert occurrence in Alertally. The same Alertmanager can send the alert
 to Alertally **and** to Slack at the same time (see [Alertally + Slack](#alertally--slack)).
 
 ## 1. Configure Alertally
@@ -141,9 +141,45 @@ this from a pod in the cluster before enabling the route.
 | `none` | No severity |
 | missing or any other value | Unknown |
 
+### Service catalog and operational incidents
+
+Alerts can match a technical service through their labels. A service can belong
+to multiple groups, which show active alerts from their member services. An SRE
+can create an operational incident from an alert and link other alerts to it.
+When Alertmanager reports a recovery, the linked incident shows it in the
+timeline. The incident owner decides when to mark the incident as resolved.
+
+Add a `service` label to your alerts to fill the catalog automatically. The
+first alert with `service=orders-api` creates a technical service named
+`orders-api` with the rule `service=orders-api`. Edits made afterwards are kept,
+and an archived service is not created again. Set the label in each alerting
+rule or once per Prometheus in `external_labels`:
+
+```yaml
+groups:
+  - name: orders
+    rules:
+      - alert: HighLatency
+        expr: histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job="orders-api"}[5m])) > 1
+        labels:
+          severity: warning
+          service: orders-api
+```
+
+`CATALOG_SERVICE_LABELS` changes the label name and accepts several labels in
+priority order, such as `service,resource`. The first label present in the alert
+names the service, so an alert with both `service` and `resource` creates only
+the `service` entry. `CATALOG_AUTO_CREATE=false` turns this off. Alerts without the label show up under **Catalog → suggestions**,
+grouped by labels such as `app`, `resource` or `job`, so you can create the
+service or add the rule to an existing one.
+
+See the [catalog and incident guide](plans/2026-11-18-catalogo-e-incidentes-design.md).
+
 ### Counting in reports
 
-- Each incident is identified by `fingerprint` + `startsAt`.
+The webhook uses the historical `incident_id` field for the alert occurrence ID.
+
+- Each occurrence is identified by `fingerprint` + `startsAt`.
 - Different label sets have different fingerprints, even with the same alert name.
   Resolution matches the same fingerprint and exact `startsAt` used when firing;
   the status of each alert is read individually, even in a mixed firing/resolved batch.
@@ -153,8 +189,14 @@ this from a pod in the cluster before enabling the route.
   incident, so they **don't inflate** the report counts.
 - When an alert resolves and later fires again, `startsAt` changes and it counts as a
   new firing. This is what the "most triggered alerts" ranking measures.
-- Without `send_resolved: true`, the alert stays open in Alertally until someone
-  closes it manually.
+- If a new firing has the same fingerprint and a later valid `startsAt`, Alertally
+  closes older open occurrences of that fingerprint with `closure_reason=superseded`
+  and `superseded_by` pointing to the new incident. This also covers records stored
+  before this behavior was introduced. It logs a warning about the missing resolved
+  webhook and leaves `ends_at` untouched because the recovery time is unknown.
+  Different fingerprints (including warning versus critical) remain independent.
+- Without `send_resolved: true`, an alert stays open until someone closes it manually
+  or a later occurrence of the same fingerprint supersedes it.
 - If a resolved webhook creates a new incident instead of matching an existing
   one, the server logs `resolved without matching incident` with its fingerprint,
   start time, resource and service. Compare these with the original firing event.

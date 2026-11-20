@@ -1,0 +1,41 @@
+{% extends 'operations.html' %}
+{% from 'operations_macros.html' import entry_badges, health %}
+{% set page_title = _('Service catalog') %}
+{% block content %}
+<div class="page-head mb-4">
+    <h1>{{ page_title }}</h1>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-primary" href="{{ url_for('catalog.edit', kind='service') }}">{{ _('New service') }}</a>
+        <a class="btn btn-outline-primary" href="{{ url_for('catalog.edit', kind='group') }}">{{ _('New group') }}</a>
+        <a class="btn btn-outline-primary" href="{{ url_for('catalog.suggestions') }}">
+            {{ ngettext('%(num)d suggestion', '%(num)d suggestions', suggestion_count) }}</a>
+    </div>
+</div>
+{% if show_archived %}
+<p><a href="{{ url_for('catalog.index') }}">{{ _('Hide archived entries') }}</a></p>
+{% elif archived_count %}
+<p><a href="{{ url_for('catalog.index', archived=1) }}">{{ ngettext('Show %(num)d archived entry', 'Show %(num)d archived entries', archived_count) }}</a></p>
+{% endif %}
+<div class="row g-3">
+    {% for heading, entries in [(_('Technical services'), services), (_('Groups'), groups)] %}
+    <div class="col-xl-6">
+        <section class="ops-panel">
+            <h2>{{ heading }}</h2>
+            <ul class="ops-list ops-catalog-list list-unstyled mb-0">
+                {% for entry in entries %}
+                <li{% if entry.active_count %} class="ops-catalog-active"{% endif %}>
+                    <a class="fw-bold" href="{{ url_for('catalog.detail', entry_id=entry._id) }}">{{ entry.name }}</a>
+                    {% if entry.owner or entry.environment %}
+                    <div class="small text-muted">{{ [entry.owner, entry.environment]|select|join(' · ') }}</div>
+                    {% endif %}
+                    <div class="d-flex flex-wrap gap-2 mt-1">{{ health(entry.active_count, entry.impacted) }}{{ entry_badges(entry, entry.stale, stale_days) }}</div>
+                </li>
+                {% else %}
+                <li class="text-muted">{{ _('No entries yet.') }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

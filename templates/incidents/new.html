@@ -1,0 +1,25 @@
+{% extends 'operations.html' %}
+{% from 'operations_macros.html' import csrf %}
+{% set page_title = _('New incident') %}
+{% block content %}
+<a href="{{ url_for('incidents.index') }}">{{ _('Incidents') }}</a>
+<div class="page-head mb-3"><h1>{{ page_title }}</h1></div>
+<form class="ops-panel ops-form" method="post">
+    {{ csrf() }}
+    <p class="text-muted">{{ _('Initial alert') }} · {{ alert.name }}</p>
+    <p class="ops-text">{{ alert.summary }}</p>
+    <div class="mb-3">
+        <label class="form-label" for="title">{{ _('Title') }}</label>
+        <input class="form-control" id="title" name="title" value="{{ title }}" maxlength="160" required>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="severity">{{ _('Severity') }}</label>
+        <select class="form-select" id="severity" name="severity">
+            {% for value in severities %}
+            <option value="{{ value }}" {% if value == severity %}selected{% endif %}>{{ value|severity_label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary">{{ _('Create incident') }}</button>
+</form>
+{% endblock %}

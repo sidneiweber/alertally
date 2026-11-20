@@ -1,0 +1,61 @@
+{% extends 'operations.html' %}
+{% from 'operations_macros.html' import alert_list, csrf, entry_badges, health %}
+{% set page_title = entry.name %}
+{% block content %}
+<a href="{{ url_for('catalog.index') }}">{{ _('Service catalog') }}</a>
+<div class="page-head mb-3">
+    <h1>{{ entry.name }}</h1>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-primary" href="{{ url_for('catalog.edit', entry_id=entry._id) }}">{{ _('Edit') }}</a>
+        <form method="post" action="{{ url_for('catalog.archive', entry_id=entry._id) }}">
+            {{ csrf() }}
+            <input type="hidden" name="archived" value="{{ '0' if entry.archived else '1' }}">
+            <button class="btn btn-outline-primary" type="submit">{{ _('Restore') if entry.archived else _('Archive') }}</button>
+        </form>
+    </div>
+</div>
+<div class="d-flex flex-wrap gap-2 mb-3">{{ health(active_count, impacting) }}{{ entry_badges(entry, stale, stale_days) }}</div>
+{% if entry.description %}<p class="ops-text">{{ entry.description }}</p>{% endif %}
+{% if entry.owner or entry.environment %}
+<p class="text-muted">{{ [entry.owner, entry.environment]|select|join(' · ') }}</p>
+{% endif %}
+<div class="d-flex flex-wrap gap-3 mb-3">
+    {% for field, label in [('dashboard_url', _('Dashboard')), ('runbook_url', _('Runbook')), ('repository_url', _('Repository'))] %}
+    {% if entry[field] %}<a href="{{ entry[field] }}">{{ label }}</a>{% endif %}
+    {% endfor %}
+</div>
+<div class="row g-3">
+    <div class="col-xl-8">
+        <section class="ops-panel mb-3">
+            <h2>{{ _('Active alerts') }} <span class="text-muted">({{ active_count }})</span></h2>
+            {{ alert_list(active, true) }}
+        </section>
+        <section class="ops-panel">
+            <h2>{{ _('Recent closed alerts') }}</h2>
+            {{ alert_list(past, true) }}
+        </section>
+    </div>
+    <div class="col-xl-4">
+        <section class="ops-panel mb-3">
+            <h2>{{ _('Technical services') if entry.kind == 'group' else _('Groups') }}</h2>
+            <ul class="list-unstyled mb-0">
+                {% for item in related %}
+                <li><a href="{{ url_for('catalog.detail', entry_id=item._id) }}">{{ item.name }}</a></li>
+                {% else %}
+                <li class="text-muted">{{ _('No entries yet.') }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+        <section class="ops-panel">
+            <h2>{{ _('Incidents with confirmed impact') }}</h2>
+            <ul class="list-unstyled mb-0">
+                {% for incident in impacting %}
+                <li><a href="{{ url_for('incidents.detail', incident_id=incident._id) }}">{{ incident.title }}</a></li>
+                {% else %}
+                <li class="text-muted">{{ _('No active incidents with confirmed impact.') }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+    </div>
+</div>
+{% endblock %}

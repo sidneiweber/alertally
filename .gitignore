@@ -20,3 +20,6 @@ letsencrypt/
 
 # Gerado pelo pybabel extract
 messages.pot
+
+# IDE
+.idea/

@@ -49,6 +49,12 @@ body.alertally .sidebar .nav-item.active > .nav-link { font-weight: 600; }
 body.alertally .sidebar .nav-item.active > .nav-link .sidebar-icon { color: var(--al-signal); }
 body.alertally .sidebar .nav-link:focus-visible { outline: 2px solid var(--al-signal); outline-offset: 2px; }
 body.alertally .sidebar .brand-link .wordmark { font-size: 1.35rem; color: var(--al-text); }
+body.alertally .sidebar .sidebar-close {
+    position: absolute;
+    inset-block-start: .75rem;
+    inset-inline-end: .75rem;
+    color: var(--al-text);
+}
 body.alertally .navbar-theme-primary { background: var(--al-ink) !important; border-bottom: 1px solid var(--al-line); }
 
 /* ---------- header ---------- */
@@ -454,3 +460,69 @@ body.alertally .btn-signal {
 }
 body.alertally .btn-signal:hover { filter: brightness(1.08); }
 body.alertally .btn-signal:focus-visible { outline: 2px solid var(--al-text); outline-offset: 2px; }
+
+/* Service catalog and incident workspace */
+.operations .ops-panel {
+    background: var(--al-surface);
+    border: 1px solid var(--al-line);
+    border-radius: 10px;
+    padding: 1rem;
+    min-width: 0;
+}
+.operations .ops-panel h2 {
+    color: var(--al-text);
+    font: 700 1.15rem var(--al-display);
+    margin-bottom: .75rem;
+}
+.operations .ops-form { max-width: 48rem; }
+.operations .form-control,
+.operations .form-select {
+    background-color: var(--al-ink);
+    border-color: var(--al-line);
+    color: var(--al-text);
+}
+.operations .form-control:focus,
+.operations .form-select:focus { border-color: var(--al-signal); }
+.operations .form-control::placeholder { color: var(--al-muted); }
+.operations .form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%238b949e' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E");
+}
+.operations .form-check-input { background-color: var(--al-ink); border-color: var(--al-muted); }
+.operations .form-check-input:checked { background-color: var(--al-critical); }
+.operations .form-label,
+.operations .form-check-label { color: var(--al-text); }
+.operations legend { color: var(--al-text-2); font-size: .9rem; font-weight: 600; }
+.operations .btn-primary { background: var(--al-signal); border-color: var(--al-signal); color: var(--al-ink); }
+.operations .btn-primary:hover { filter: brightness(1.1); }
+.operations .btn-outline-primary { border-color: var(--al-line); color: var(--al-signal); }
+.operations .btn-outline-primary:hover { background: var(--al-surface-2); border-color: var(--al-signal); }
+.operations .ops-list > li { padding: .65rem 0; overflow-wrap: anywhere; }
+.operations .ops-list > li + li { border-top: 1px solid var(--al-line); }
+.operations .ops-status {
+    color: var(--al-text-2);
+    background: var(--al-surface-2);
+    border: 1px solid var(--al-line);
+    border-radius: 6px;
+    padding: .2rem .55rem;
+    font-size: .82rem;
+}
+.operations .ops-warning {
+    color: var(--al-signal);
+    background: color-mix(in srgb, var(--al-signal) 12%, var(--al-surface));
+    border-color: var(--al-signal);
+    font-weight: 600;
+}
+.operations .ops-catalog-list > li { padding-inline: .75rem; }
+.operations .ops-catalog-list > .ops-catalog-active {
+    border-inline-start: 3px solid var(--al-signal);
+    background: color-mix(in srgb, var(--al-signal) 7%, var(--al-surface));
+    padding-inline-start: calc(.75rem - 3px);
+}
+.operations .ops-impact { color: var(--al-critical); }
+.operations .ops-timeline > li {
+    border-inline-start: 2px solid var(--al-line);
+    padding: 0 .8rem .85rem;
+    overflow-wrap: anywhere;
+}
+.operations .ops-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.operations summary { color: var(--al-signal); cursor: pointer; }

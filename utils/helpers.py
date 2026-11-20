@@ -31,6 +31,10 @@ def create_indexes():
         # Índice para queries de relatório
         alerts.create_index([("update_at", -1), ("name", 1), ("summary", 1)])
 
+        # Uma entrada do catálogo por valor da label de serviço
+        db.catalog.create_index("auto_key", unique=True, sparse=True)
+        db.catalog_dismissed.create_index("rule", unique=True)
+
         logging.info("MongoDB indexes created successfully")
     except PyMongoError as e:
         logging.error(f"Error creating indexes: {e}")

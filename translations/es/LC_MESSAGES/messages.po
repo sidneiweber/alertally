@@ -299,3 +299,400 @@ msgstr "informe"
 msgid "someone"
 msgstr "alguien"
 
+
+msgid "Opened at"
+msgstr "Abierto el"
+
+msgid "Active"
+msgstr "Activos"
+
+msgid "Add a rule from observed labels"
+msgstr "Añadir una regla a partir de etiquetas observadas"
+
+msgid "Add note"
+msgstr "Añadir nota"
+
+msgid "Added a note"
+msgstr "Añadió una nota"
+
+msgid "Alert closed manually"
+msgstr "Alerta cerrada manualmente"
+
+msgid "Alert matching rules"
+msgstr "Reglas de asociación de alertas"
+
+msgid "Alert opened"
+msgstr "Alerta abierta"
+
+msgid "Alert replaced by a newer occurrence"
+msgstr "Alerta reemplazada por una ocurrencia más reciente"
+
+msgid "Back"
+msgstr "Volver"
+
+msgid "Changed incident status"
+msgstr "Cambió el estado del incidente"
+
+msgid "Choose a label combination"
+msgstr "Elige una combinación de etiquetas"
+
+msgid "Choose an alert"
+msgstr "Elige una alerta"
+
+msgid "Choose an alert to link."
+msgstr "Elige una alerta para vincular."
+
+msgid "Confirmed impact"
+msgstr "Impacto confirmado"
+
+msgid "Create a technical service to add it to this group."
+msgstr "Crea un servicio técnico para añadirlo a esta agrupación."
+
+msgid "Create incident"
+msgstr "Crear incidente"
+
+msgid "Dashboard"
+msgstr "Panel"
+
+msgid "Dashboard URL"
+msgstr "URL del panel"
+
+msgid "Describe the confirmed impact in up to 3,000 characters."
+msgstr "Describe el impacto confirmado en hasta 3.000 caracteres."
+
+msgid "Description"
+msgstr "Descripción"
+
+msgid "Edit"
+msgstr "Editar"
+
+msgid "Edit catalog entry"
+msgstr "Editar registro"
+
+msgid "Edit impact"
+msgstr "Editar impacto"
+
+msgid "Enter a name of up to 120 characters."
+msgstr "Introduce un nombre de hasta 120 caracteres."
+
+msgid "Enter a note of up to 3,000 characters."
+msgstr "Escribe una nota de hasta 3.000 caracteres."
+
+msgid "Enter a title of up to 160 characters and choose a severity."
+msgstr "Introduce un título de hasta 160 caracteres y elige la gravedad."
+
+msgid "Enter a valid HTTP or HTTPS link."
+msgstr "Introduce un enlace HTTP o HTTPS válido."
+
+msgid "Environment"
+msgstr "Entorno"
+
+msgid "Go to alerts"
+msgstr "Ir a las alertas"
+
+msgid "Groups"
+msgstr "Agrupaciones"
+
+msgid "Impact description"
+msgstr "Descripción del impacto"
+
+msgid "Incident created"
+msgstr "Incidente creado"
+
+msgid "Incident owner"
+msgstr "Responsable del incidente"
+
+msgid "Incident status"
+msgstr "Estado del incidente"
+
+msgid "Incidents"
+msgstr "Incidentes"
+
+msgid "Incidents with confirmed impact"
+msgstr "Incidentes con impacto confirmado"
+
+msgid "Initial alert"
+msgstr "Alerta inicial"
+
+msgid "Invalid incident status change."
+msgstr "Cambio de estado del incidente inválido."
+
+msgid "Invalid selection."
+msgstr "Selección inválida."
+
+msgid "Investigating"
+msgstr "En investigación"
+
+msgid "Investigation note"
+msgstr "Nota de investigación"
+
+msgid "Link alert"
+msgstr "Vincular alerta"
+
+msgid "Link another alert"
+msgstr "Vincular otra alerta"
+
+msgid "Linked alerts"
+msgstr "Alertas vinculadas"
+
+msgid "Linked an alert"
+msgstr "Vinculó una alerta"
+
+msgid "Mitigated"
+msgstr "Mitigado"
+
+msgid "Name"
+msgstr "Nombre"
+
+msgid "New group"
+msgstr "Nueva agrupación"
+
+msgid "New incident"
+msgstr "Nuevo incidente"
+
+msgid "New service"
+msgstr "Nuevo servicio"
+
+msgid "No active alerts"
+msgstr "Sin alertas activas"
+
+msgid "No active incidents with confirmed impact."
+msgstr "No hay incidentes activos con impacto confirmado."
+
+msgid "No alerts found."
+msgstr "No se encontraron alertas."
+
+msgid "No changes saved. Review the current incident state."
+msgstr "No se guardaron cambios. Revisa el estado actual del incidente."
+
+msgid "No confirmed impact recorded."
+msgstr "No se registró impacto confirmado."
+
+msgid "No entries yet."
+msgstr "Todavía no hay registros."
+
+msgid "No incidents in this view. Open an alert to create an incident."
+msgstr "No hay incidentes en esta vista. Abre una alerta para crear un incidente."
+
+msgid "Open or create incident"
+msgstr "Abrir o crear incidente"
+
+msgid "Owning team"
+msgstr "Equipo responsable"
+
+msgid "Recent closed alerts"
+msgstr "Alertas cerradas recientemente"
+
+msgid "Repository"
+msgstr "Repositorio"
+
+msgid "Repository URL"
+msgstr "URL del repositorio"
+
+msgid "Resolved"
+msgstr "Resuelto"
+
+msgid "Runbook"
+msgstr "Guía operativa"
+
+msgid "Runbook URL"
+msgstr "URL de la guía operativa"
+
+msgid "Save"
+msgstr "Guardar"
+
+msgid "Save impact"
+msgstr "Guardar impacto"
+
+msgid "Search"
+msgstr "Buscar"
+
+msgid "Search by alert name"
+msgstr "Buscar por nombre de alerta"
+
+msgid "Service catalog"
+msgstr "Catálogo de servicios"
+
+#, python-format
+msgid "Set status to %(status)s"
+msgstr "Cambiar estado a %(status)s"
+
+msgid "Source reported recovery"
+msgstr "La fuente informó la recuperación"
+
+msgid "Take ownership"
+msgstr "Asumir incidente"
+
+msgid "Technical services"
+msgstr "Servicios técnicos"
+
+msgid "Timeline"
+msgstr "Cronología"
+
+msgid "Title"
+msgstr "Título"
+
+msgid "Took ownership"
+msgstr "Asumió el incidente"
+
+msgid "Updated impact"
+msgstr "Actualizó el impacto"
+
+msgid "Use at most 30 rules with up to 15 labels each."
+msgstr "Usa como máximo 30 reglas con hasta 15 etiquetas cada una."
+
+msgid "Use one key=value per line. All labels in a rule must match. Leave a blank line between alternatives."
+msgstr "Usa un par clave=valor por línea. Todas las etiquetas de una regla deben coincidir. Deja una línea en blanco entre alternativas."
+
+msgid "Use one valid key=value per line, with unique keys in each rule."
+msgstr "Usa un par válido clave=valor por línea, sin repetir claves en la misma regla."
+
+msgid "Use up to 120 characters for the owner and environment."
+msgstr "Usa hasta 120 caracteres para el equipo responsable y el entorno."
+
+msgid "Use up to 2,000 characters for the description."
+msgstr "Usa hasta 2.000 caracteres para la descripción."
+
+#, python-format
+msgid "%(num)d active alert"
+msgid_plural "%(num)d active alerts"
+msgstr[0] "%(num)d alerta activa"
+msgstr[1] "%(num)d alertas activas"
+
+#: templates/includes/sidebar.html:23
+msgid "Home"
+msgstr "Inicio"
+
+#: templates/includes/sidebar.html:42
+msgid "Reports"
+msgstr "Informes"
+
+#: routes/catalog.py
+msgid "Entry archived."
+msgstr "Entrada archivada."
+
+#: routes/catalog.py
+msgid "Entry restored."
+msgstr "Entrada restaurada."
+
+#: templates/operations_macros.html
+msgid "Created from the service label of an alert"
+msgstr "Creada a partir de la etiqueta de servicio de una alerta"
+
+#: templates/operations_macros.html
+msgid "Automatic"
+msgstr "Automático"
+
+#: templates/operations_macros.html
+#, python-format
+msgid "No alerts in the last %(days)d days"
+msgstr "Sin alertas en los últimos %(days)d días"
+
+#: templates/operations_macros.html
+msgid "No recent activity"
+msgstr "Sin actividad"
+
+#: templates/operations_macros.html
+msgid "Archived"
+msgstr "Archivado"
+
+#: templates/catalog/detail.html
+msgid "Restore"
+msgstr "Restaurar"
+
+#: templates/catalog/detail.html
+msgid "Archive"
+msgstr "Archivar"
+
+#: templates/catalog/index.html
+msgid "Hide archived entries"
+msgstr "Ocultar entradas archivadas"
+
+#: templates/catalog/index.html
+#, python-format
+msgid "Show %(num)d archived entry"
+msgid_plural "Show %(num)d archived entries"
+msgstr[0] "Mostrar %(num)d entrada archivada"
+msgstr[1] "Mostrar %(num)d entradas archivadas"
+
+#: routes/catalog.py
+msgid "Choose a technical service."
+msgstr "Elige un servicio técnico."
+
+#: routes/catalog.py
+#, python-format
+msgid "Rule added to %(name)s."
+msgstr "Regla añadida a %(name)s."
+
+#: templates/catalog/suggestions.html
+msgid "Service suggestions"
+msgstr "Sugerencias de servicios"
+
+#: templates/catalog/suggestions.html
+#, python-format
+msgid "%(matched)d of %(total)d alerts from the last %(days)d days match a catalog service (%(percent)d%%)."
+msgstr "%(matched)d de %(total)d alertas de los últimos %(days)d días pertenecen a un servicio del catálogo (%(percent)d%%)."
+
+#: templates/catalog/suggestions.html
+#, python-format
+msgid "No alerts in the last %(days)d days."
+msgstr "Ninguna alerta en los últimos %(days)d días."
+
+#: templates/catalog/suggestions.html
+#, python-format
+msgid "Suggestions group alerts from the last %(days)d days that no service matches yet."
+msgstr "Las sugerencias agrupan alertas de los últimos %(days)d días que aún no pertenecen a ningún servicio."
+
+#: templates/catalog/suggestions.html
+msgid "Back to open suggestions"
+msgstr "Volver a las sugerencias abiertas"
+
+#: templates/catalog/suggestions.html
+#, python-format
+msgid "last at %(time)s"
+msgstr "último el %(time)s"
+
+#: templates/catalog/suggestions.html
+msgid "Create service"
+msgstr "Crear servicio"
+
+#: templates/catalog/suggestions.html
+msgid "Ignore"
+msgstr "Ignorar"
+
+#: templates/catalog/suggestions.html
+msgid "Technical service"
+msgstr "Servicio técnico"
+
+#: templates/catalog/suggestions.html
+msgid "Add to an existing service"
+msgstr "Añadir a un servicio existente"
+
+#: templates/catalog/suggestions.html
+msgid "Add rule"
+msgstr "Añadir regla"
+
+#: templates/catalog/suggestions.html
+msgid "No suggestions right now."
+msgstr "No hay sugerencias por ahora."
+
+#: templates/catalog/index.html
+#, python-format
+msgid "%(num)d suggestion"
+msgid_plural "%(num)d suggestions"
+msgstr[0] "%(num)d sugerencia"
+msgstr[1] "%(num)d sugerencias"
+
+#: templates/catalog/suggestions.html
+#, python-format
+msgid "Show %(num)d ignored suggestion"
+msgid_plural "Show %(num)d ignored suggestions"
+msgstr[0] "Mostrar %(num)d sugerencia ignorada"
+msgstr[1] "Mostrar %(num)d sugerencias ignoradas"
+
+#: templates/catalog/suggestions.html
+#, python-format
+msgid "%(num)d alert"
+msgid_plural "%(num)d alerts"
+msgstr[0] "%(num)d alerta"
+msgstr[1] "%(num)d alertas"

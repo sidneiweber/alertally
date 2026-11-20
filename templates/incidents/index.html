@@ -1,0 +1,29 @@
+{% extends 'operations.html' %}
+{% set page_title = _('Incidents') %}
+{% block content %}
+<div class="page-head mb-4"><h1>{{ page_title }}</h1></div>
+<nav class="d-flex gap-2 mb-3" aria-label="{{ _('Incident status') }}">
+    {% for value, label in [('active', _('Active')), ('resolved', _('Resolved'))] %}
+    <a class="btn {{ 'btn-primary' if value == status else 'btn-outline-primary' }}"
+       href="{{ url_for('incidents.index', status=value) }}" {% if value == status %}aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+</nav>
+<section class="ops-panel">
+    <ul class="ops-list list-unstyled mb-0">
+        {% for incident in incidents %}
+        <li class="d-flex flex-wrap justify-content-between align-items-baseline gap-2">
+            <div>
+                <a class="fw-bold" href="{{ url_for('incidents.detail', incident_id=incident._id) }}">{{ incident.title }}</a>
+                <div class="small text-muted">{{ incident.owner }} · {{ incident.created_at|operation_time }}</div>
+            </div>
+            <span class="ops-status">{{ incident.severity|severity_label }} · {{ statuses[incident.status] }}</span>
+        </li>
+        {% else %}
+        <li class="text-muted">
+            {{ _('No incidents in this view. Open an alert to create an incident.') }}
+            <a href="{{ url_for('main.index') }}">{{ _('Go to alerts') }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endblock %}

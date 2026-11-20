@@ -24,6 +24,7 @@
     </td>
     <td>
         <div class="alert-name">{{ source_icon(alert.source) }}<span>{{ alert.name }}</span></div>
+        <a class="small" href="{{ url_for('incidents.create', alert_id=alert._id) }}">{{ _('Open or create incident') }}</a>
     </td>
     <td><span class="chip"><span class="dot"></span>{{ alert.state|state_label }}</span></td>
     <td>

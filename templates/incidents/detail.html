@@ -1,0 +1,122 @@
+{% extends 'operations.html' %}
+{% from 'operations_macros.html' import alert_list, csrf %}
+{% set page_title = incident.title %}
+{% block content %}
+<a href="{{ url_for('incidents.index') }}">{{ _('Incidents') }}</a>
+<div class="page-head mb-3"><h1>{{ incident.title }}</h1></div>
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <span class="ops-status">{{ incident.severity|severity_label }}</span>
+    <span class="ops-status">{{ statuses[incident.status] }}</span>
+    <span class="text-muted" title="{{ _('Incident owner') }}">{{ incident.owner }}</span>
+    {% if transitions and incident.owner != session.email %}
+    <form method="post">
+        {{ csrf() }}
+        <button class="btn btn-sm btn-outline-primary" name="action" value="assign">{{ _('Take ownership') }}</button>
+    </form>
+    {% elif transitions %}
+    {% for target in transitions %}
+    <form method="post">
+        {{ csrf() }}
+        <input type="hidden" name="status" value="{{ target }}">
+        <button class="btn btn-sm btn-outline-primary" name="action" value="status">{{ _('Set status to %(status)s', status=statuses[target]) }}</button>
+    </form>
+    {% endfor %}
+    {% endif %}
+</div>
+<div class="row g-3">
+    <div class="col-xl-7">
+        <section class="ops-panel mb-3">
+            <h2>{{ _('Timeline') }}</h2>
+            <ol class="ops-timeline list-unstyled">
+                {% for event in timeline %}
+                <li>
+                    <div class="small text-muted">
+                        {{ event.at|operation_time }}{% if event.actor %} · {{ event.actor }}{% endif %}
+                    </div>
+                    <div class="fw-bold">{{ events[event.kind] }}{% if event.status %} · {{ statuses[event.status] }}{% endif %}</div>
+                    {% if event.text %}<div class="ops-text">{{ event.text }}</div>{% endif %}
+                    {% if event.names %}<div class="small text-muted">{{ event.names|join(' · ') }}</div>{% endif %}
+                </li>
+                {% endfor %}
+            </ol>
+            <form method="post">
+                {{ csrf() }}
+                <label class="form-label" for="note">{{ _('Investigation note') }}</label>
+                <textarea class="form-control mb-2" id="note" name="note" rows="3" maxlength="3000" required></textarea>
+                <button class="btn btn-primary" name="action" value="note">{{ _('Add note') }}</button>
+            </form>
+        </section>
+    </div>
+    <div class="col-xl-5">
+        <section class="ops-panel mb-3">
+            <h2>{{ _('Confirmed impact') }}</h2>
+            {% set impacted = entries|selectattr('_id', 'in', incident.impact_ids)|list %}
+            {% if incident.impact %}<p class="ops-text">{{ incident.impact }}</p>
+            {% else %}<p class="text-muted">{{ _('No confirmed impact recorded.') }}</p>{% endif %}
+            {% if impacted %}
+            <ul class="list-unstyled">
+                {% for entry in impacted %}
+                <li><a href="{{ url_for('catalog.detail', entry_id=entry._id) }}">{{ entry.name }}</a></li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            {% if transitions %}
+            <details>
+                <summary>{{ _('Edit impact') }}</summary>
+                <form method="post" class="mt-2">
+                    {{ csrf() }}
+                    <label class="form-label" for="impact">{{ _('Impact description') }}</label>
+                    <textarea class="form-control mb-3" id="impact" name="impact" rows="3" maxlength="3000">{{ incident.impact }}</textarea>
+                    {% for kind, label in [('service', _('Technical services')), ('group', _('Groups'))] %}
+                    <fieldset class="mb-3">
+                        <legend>{{ label }}</legend>
+                        {% for entry in entries if entry.kind == kind %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="impact-{{ entry._id }}"
+                                   name="impact_ids" value="{{ entry._id }}" {% if entry._id in incident.impact_ids %}checked{% endif %}>
+                            <label class="form-check-label" for="impact-{{ entry._id }}">{{ entry.name }}</label>
+                        </div>
+                        {% else %}
+                        <p class="small text-muted mb-0">{{ _('No entries yet.') }}</p>
+                        {% endfor %}
+                    </fieldset>
+                    {% endfor %}
+                    <button class="btn btn-primary" name="action" value="impact">{{ _('Save impact') }}</button>
+                </form>
+            </details>
+            {% endif %}
+        </section>
+        <section class="ops-panel">
+            <h2>{{ _('Linked alerts') }}</h2>
+            {{ alert_list(linked) }}
+            {% if transitions %}
+            <details class="mt-3" {% if search %}open{% endif %}>
+                <summary>{{ _('Link another alert') }}</summary>
+                <form method="get" class="mt-2 mb-3">
+                    <label class="form-label" for="q">{{ _('Search by alert name') }}</label>
+                    <div class="d-flex gap-2">
+                        <input class="form-control" id="q" name="q" value="{{ search }}" maxlength="120">
+                        <button class="btn btn-outline-primary" type="submit">{{ _('Search') }}</button>
+                    </div>
+                </form>
+                {% if available %}
+                <form method="post">
+                    {{ csrf() }}
+                    <label class="form-label" for="alert_ids">{{ _('Alert') }}</label>
+                    <select class="form-select mb-2" id="alert_ids" name="alert_ids" required>
+                        <option value="">{{ _('Choose an alert') }}</option>
+                        {% for alert in available %}
+                        <option value="{{ alert._id }}">{{ alert.name }} · {{ alert.source }} · {{ alert.state|state_label }}{% if alert.opened_at %} · {{ alert.opened_at|operation_time }}{% endif %}{% if alert.labels is mapping %}{% for key in ('service', 'resource', 'environment', 'namespace', 'cluster') if key in alert.labels %} · {{ alert.labels[key] }}{% endfor %}{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="btn btn-primary" name="action" value="link">{{ _('Link alert') }}</button>
+                </form>
+                {% else %}
+                <p class="text-muted mb-0">{{ _('No alerts found.') }}</p>
+                {% endif %}
+            </details>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}

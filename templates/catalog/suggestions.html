@@ -1,0 +1,73 @@
+{% extends 'operations.html' %}
+{% from 'operations_macros.html' import csrf %}
+{% set page_title = _('Service suggestions') %}
+{% block content %}
+<a href="{{ url_for('catalog.index') }}">{{ _('Service catalog') }}</a>
+<div class="page-head mb-3"><h1>{{ page_title }}</h1></div>
+<p class="text-muted">
+    {% if total %}
+    {{ _('%(matched)d of %(total)d alerts from the last %(days)d days match a catalog service (%(percent)d%%).',
+         matched=matched, total=total, days=coverage_days, percent=(100 * matched / total)|round(0, 'floor')|int) }}
+    {% else %}
+    {{ _('No alerts in the last %(days)d days.', days=coverage_days) }}
+    {% endif %}
+    {{ _('Suggestions group alerts from the last %(days)d days that no service matches yet.', days=suggestion_days) }}
+</p>
+{% if show_dismissed %}
+<p><a href="{{ url_for('catalog.suggestions') }}">{{ _('Back to open suggestions') }}</a></p>
+{% elif dismissed_count %}
+<p><a href="{{ url_for('catalog.suggestions', dismissed=1) }}">{{ ngettext('Show %(num)d ignored suggestion', 'Show %(num)d ignored suggestions', dismissed_count) }}</a></p>
+{% endif %}
+<section class="ops-panel">
+    <ul class="ops-list list-unstyled mb-0">
+        {% for suggestion in suggestions %}
+        <li>
+            <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2">
+                <div>
+                    <span class="fw-bold mono">{{ suggestion.label }}</span>
+                    <div class="small text-muted">
+                        {{ ngettext('%(num)d alert', '%(num)d alerts', suggestion.count) }}
+                        · {{ _('last at %(time)s', time=suggestion.last_at|operation_time) }}
+                        {% if suggestion.examples %} · {{ suggestion.examples|join(', ') }}{% endif %}
+                    </div>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    {% if show_dismissed %}
+                    <form method="post" action="{{ url_for('catalog.dismiss_suggestion') }}">
+                        {{ csrf() }}
+                        <input type="hidden" name="rule" value="{{ suggestion.key }}">
+                        <input type="hidden" name="restore" value="1">
+                        <button class="btn btn-sm btn-outline-primary" type="submit">{{ _('Restore') }}</button>
+                    </form>
+                    {% else %}
+                    <a class="btn btn-sm btn-primary"
+                       href="{{ url_for('catalog.edit', kind='service', name=suggestion.name, rules=suggestion.key) }}">{{ _('Create service') }}</a>
+                    <form method="post" action="{{ url_for('catalog.dismiss_suggestion') }}">
+                        {{ csrf() }}
+                        <input type="hidden" name="rule" value="{{ suggestion.key }}">
+                        <button class="btn btn-sm btn-outline-primary" type="submit">{{ _('Ignore') }}</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% if not show_dismissed and services %}
+            <form method="post" action="{{ url_for('catalog.add_suggestion') }}" class="d-flex flex-wrap gap-2 mt-2">
+                {{ csrf() }}
+                <input type="hidden" name="rule" value="{{ suggestion.key }}">
+                <label class="visually-hidden" for="service-{{ loop.index }}">{{ _('Technical service') }}</label>
+                <select class="form-select form-select-sm w-auto" id="service-{{ loop.index }}" name="service_id" required>
+                    <option value="">{{ _('Add to an existing service') }}</option>
+                    {% for service in services %}
+                    <option value="{{ service._id }}">{{ service.name }}</option>
+                    {% endfor %}
+                </select>
+                <button class="btn btn-sm btn-outline-primary" type="submit">{{ _('Add rule') }}</button>
+            </form>
+            {% endif %}
+        </li>
+        {% else %}
+        <li class="text-muted">{{ _('No suggestions right now.') }}</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endblock %}
