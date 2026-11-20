@@ -13,7 +13,8 @@ VALUE_LIMIT = 300
 IDENTIFIER_LABELS = ('app_kubernetes_io_name', 'app', 'resource', 'service_name', 'DBInstanceIdentifier',
                      'InstanceId', 'FunctionName', 'LoadBalancer', 'ClusterName', 'job')
 # Labels that keep resources with the same name apart.
-QUALIFIER_LABELS = ('namespace', 'environment', 'env', 'cluster', 'project', 'account', 'region')
+QUALIFIER_LABELS = ('namespace', 'environment', 'env', 'cluster', 'project', 'project_id',
+                    'account', 'region')
 
 
 def _usable(value, limit=VALUE_LIMIT):

@@ -29,7 +29,7 @@
             <h2>{{ _('Timeline') }}</h2>
             <ol class="ops-timeline list-unstyled">
                 {% for event in timeline %}
-                <li>
+                <li class="ops-event-{{ event.kind }}{% if event.status %} ops-event-status-{{ event.status }}{% endif %}">
                     <div class="small text-muted">
                         {{ event.at|operation_time }}{% if event.actor %} · {{ event.actor }}{% endif %}
                     </div>

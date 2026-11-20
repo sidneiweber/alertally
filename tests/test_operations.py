@@ -50,7 +50,7 @@ def test_catalog_matches_existing_and_new_alerts_and_groups(client):
 
     overview = client.get('/catalog')
     assert overview.data.count(b'1 active alert') == 4
-    assert overview.data.count(b'class="ops-catalog-active"') == 4
+    assert overview.data.count(b"ops-card-alert") == 4
 
     send_alert(client, 'three', 'Pool near limit')
     assert client.get('/catalog').data.count(b'2 active alerts') == 4
@@ -287,8 +287,11 @@ def test_stale_service_is_flagged(client):
     ({'job': 'node-exporter', 'app': 'web', 'namespace': 'shop'}, {'app': 'web', 'namespace': 'shop'}),
     ({'resource': 'orders-db', 'cluster': 'prod-1', 'env': 'prod'},
      {'resource': 'orders-db', 'env': 'prod', 'cluster': 'prod-1'}),
-    ({'DBInstanceIdentifier': 'orders', 'account': '123', 'region': 'us-east-1', 'metric': 'CPU'},
+    ({'DBInstanceIdentifier': 'orders', 'account': '123', 'region': 'us-east-1', 'metric': 'CPU',
+      'aws_namespace': 'AWS/RDS'},
      {'DBInstanceIdentifier': 'orders', 'account': '123', 'region': 'us-east-1'}),
+    ({'service_name': 'notifications', 'project_id': 'demo', 'location': 'us-east1'},
+     {'service_name': 'notifications', 'project_id': 'demo'}),
     ({'service': '  ', 'instance': 'vm-1'}, None),
     ({'environment': 'production'}, None),
     (None, None),

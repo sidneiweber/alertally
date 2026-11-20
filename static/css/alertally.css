@@ -512,18 +512,86 @@ body.alertally .btn-signal:focus-visible { outline: 2px solid var(--al-text); ou
     border-color: var(--al-signal);
     font-weight: 600;
 }
-.operations .ops-catalog-list > li { padding-inline: .75rem; }
-.operations .ops-catalog-list > .ops-catalog-active {
-    border-inline-start: 3px solid var(--al-signal);
-    background: color-mix(in srgb, var(--al-signal) 7%, var(--al-surface));
-    padding-inline-start: calc(.75rem - 3px);
+.operations .ops-tabs { gap: .25rem; border-bottom: 1px solid var(--al-line); }
+.operations .ops-tabs .nav-link {
+    color: var(--al-text-2);
+    background: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    padding: .55rem .9rem;
+    font-weight: 600;
+}
+.operations .ops-tabs .nav-link:hover { color: var(--al-text); }
+.operations .ops-tabs .nav-link.active { color: var(--al-text); border-bottom-color: var(--al-signal); }
+.operations .ops-tabs .nav-link:focus-visible { outline: 2px solid var(--al-signal); outline-offset: 2px; }
+.operations .ops-tab-count {
+    font: 500 .78rem var(--al-mono);
+    color: var(--al-muted);
+    margin-inline-start: .35rem;
+}
+.operations .ops-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+    gap: .75rem;
+}
+.operations .ops-card {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    background: var(--al-surface);
+    border: 1px solid var(--al-line);
+    border-inline-start: 4px solid var(--al-resolved);
+    border-radius: 10px;
+    padding: .85rem 1rem;
+}
+.operations .ops-card-alert {
+    border-inline-start-color: var(--al-critical);
+    background: color-mix(in srgb, var(--al-critical) 6%, var(--al-surface));
+}
+.operations .ops-card-title { font-size: 1.02rem; }
+.operations .ops-card-description {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 .operations .ops-impact { color: var(--al-critical); }
 .operations .ops-timeline > li {
+    --dot: var(--al-muted);
+    position: relative;
     border-inline-start: 2px solid var(--al-line);
-    padding: 0 .8rem .85rem;
+    margin-inline-start: .4rem;
+    padding: 0 .8rem 1rem 1.1rem;
     overflow-wrap: anywhere;
 }
+/* Um ponto por acontecimento; a linha termina no último. */
+.operations .ops-timeline > li::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: -7px;
+    inset-block-start: .2rem;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--al-surface);
+    border: 2px solid var(--dot);
+}
+.operations .ops-timeline > li:last-child { border-inline-start-color: transparent; }
+.operations .ops-timeline > .ops-event-alert_opened { --dot: var(--al-critical); }
+.operations .ops-timeline > .ops-event-created,
+.operations .ops-timeline > .ops-event-status,
+.operations .ops-timeline > .ops-event-assigned { --dot: var(--al-signal); }
+.operations .ops-timeline > .ops-event-note,
+.operations .ops-timeline > .ops-event-impact { --dot: var(--al-info); }
+/* Depois da cor de "status", para que "resolvido" fique verde. */
+.operations .ops-timeline > .ops-event-alert_recovered,
+.operations .ops-timeline > .ops-event-alert_closed,
+.operations .ops-timeline > .ops-event-status-resolved { --dot: var(--al-resolved); }
+.operations .ops-timeline > .ops-event-alert_opened::before,
+.operations .ops-timeline > .ops-event-created::before { background: var(--dot); }
 .operations .ops-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .operations summary { color: var(--al-signal); cursor: pointer; }
 

@@ -103,7 +103,7 @@ summary.
 | Description | `NewStateReason` (e.g. "Threshold Crossed: 1 datapoint…") |
 | Value / threshold | `Trigger.Threshold` |
 | Link | CloudWatch console in the alarm's region |
-| Labels | account, region, namespace, metric and the alarm's dimensions |
+| Labels | account, region, aws_namespace (e.g. `AWS/RDS`), metric and the alarm's dimensions |
 
 | New alarm state | What happens |
 |---|---|
