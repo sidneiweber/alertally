@@ -200,6 +200,7 @@ def test_aws_alarm_then_ok(client, alerts):
     assert doc["state"] == "open" and doc["severity"] == "Critical"
     assert doc["summary"] == "p99 above 2s"
     assert doc["labels"]["LoadBalancer"] == "app/web/1"
+    assert doc["labels"]["aws_namespace"] == "AWS/ApplicationELB" and "namespace" not in doc["labels"]
 
     # reentrega do SNS não duplica
     client.post("/aws", **sns(alarm("ALARM")))

@@ -343,7 +343,8 @@ def _aws_labels(alarm, region):
     labels = {
         'account': alarm.get('AWSAccountId'),
         'region': region,
-        'namespace': trigger.get('Namespace'),
+        # Not "namespace": that one qualifies Kubernetes resources in the catalog.
+        'aws_namespace': trigger.get('Namespace'),
         'metric': trigger.get('MetricName'),
     }
     for dim in trigger.get('Dimensions') or []:

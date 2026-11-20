@@ -16,26 +16,56 @@
 {% elif archived_count %}
 <p><a href="{{ url_for('catalog.index', archived=1) }}">{{ ngettext('Show %(num)d archived entry', 'Show %(num)d archived entries', archived_count) }}</a></p>
 {% endif %}
-<div class="row g-3">
-    {% for heading, entries in [(_('Technical services'), services), (_('Groups'), groups)] %}
-    <div class="col-xl-6">
-        <section class="ops-panel">
-            <h2>{{ heading }}</h2>
-            <ul class="ops-list ops-catalog-list list-unstyled mb-0">
-                {% for entry in entries %}
-                <li{% if entry.active_count %} class="ops-catalog-active"{% endif %}>
-                    <a class="fw-bold" href="{{ url_for('catalog.detail', entry_id=entry._id) }}">{{ entry.name }}</a>
-                    {% if entry.owner or entry.environment %}
-                    <div class="small text-muted">{{ [entry.owner, entry.environment]|select|join(' · ') }}</div>
-                    {% endif %}
-                    <div class="d-flex flex-wrap gap-2 mt-1">{{ health(entry.active_count, entry.impacted) }}{{ entry_badges(entry, entry.stale, stale_days) }}</div>
-                </li>
-                {% else %}
-                <li class="text-muted">{{ _('No entries yet.') }}</li>
-                {% endfor %}
-            </ul>
-        </section>
+<ul class="nav ops-tabs mb-3" role="tablist">
+    {% for key, heading, entries in [('services', _('Technical services'), services), ('groups', _('Groups'), groups)] %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link{% if loop.first %} active{% endif %}" id="tab-{{ key }}" type="button" role="tab"
+                data-bs-toggle="tab" data-bs-target="#{{ key }}" aria-controls="{{ key }}"
+                aria-selected="{{ 'true' if loop.first else 'false' }}">
+            {{ heading }} <span class="ops-tab-count">{{ entries|length }}</span>
+        </button>
+    </li>
+    {% endfor %}
+</ul>
+<div class="tab-content">
+    {% for key, entries in [('services', services), ('groups', groups)] %}
+    <div class="tab-pane fade{% if loop.first %} show active{% endif %}" id="{{ key }}" role="tabpanel"
+         aria-labelledby="tab-{{ key }}" tabindex="0">
+        {% if entries %}
+        <ul class="ops-card-grid list-unstyled mb-0">
+            {% for entry in entries %}
+            <li class="ops-card {{ 'ops-card-alert' if entry.active_count else 'ops-card-ok' }}">
+                <a class="fw-bold ops-card-title" href="{{ url_for('catalog.detail', entry_id=entry._id) }}">{{ entry.name }}</a>
+                {% if entry.owner or entry.environment %}
+                <div class="small text-muted">{{ [entry.owner, entry.environment]|select|join(' · ') }}</div>
+                {% endif %}
+                {% if entry.kind == 'group' %}
+                <div class="small text-muted">{{ ngettext('%(num)d service', '%(num)d services', entry.service_ids|length) }}</div>
+                {% elif entry.description %}
+                <div class="small text-muted ops-card-description">{{ entry.description }}</div>
+                {% endif %}
+                <div class="d-flex flex-wrap gap-2 mt-auto pt-2">{{ health(entry.active_count, entry.impacted) }}{{ entry_badges(entry, entry.stale, stale_days) }}</div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted">{{ _('No entries yet.') }}</p>
+        {% endif %}
     </div>
     {% endfor %}
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+// Keep the open tab in the address, so reloads and links return to it.
+(function () {
+    var tab = document.getElementById('tab-' + location.hash.slice(1));
+    if (tab) bootstrap.Tab.getOrCreateInstance(tab).show();
+    document.querySelectorAll('.ops-tabs [data-bs-toggle="tab"]').forEach(function (button) {
+        button.addEventListener('shown.bs.tab', function () {
+            history.replaceState(null, '', button.dataset.bsTarget);
+        });
+    });
+})();
+</script>
 {% endblock %}

@@ -870,3 +870,9 @@ msgstr[1] "%(num)d alertas abertos durante janelas de manutenção ficaram de fo
 
 msgid "Acknowledged the alert"
 msgstr "Reconheceu o alerta"
+
+#, python-format
+msgid "%(num)d service"
+msgid_plural "%(num)d services"
+msgstr[0] "%(num)d serviço"
+msgstr[1] "%(num)d serviços"
