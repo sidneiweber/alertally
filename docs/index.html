@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alertally — Seus alertas num lugar só</title>
+<meta name="description" content="Painel open source que reúne alertas do GCP, Prometheus Alertmanager e AWS CloudWatch, liga cada alerta ao serviço e ao time responsável e mostra quais disparam demais.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%230E1116'/%3E%3Crect x='11' y='26' width='6' height='11' rx='2' fill='%238B949E'/%3E%3Crect x='21' y='19' width='6' height='18' rx='2' fill='%23C9D1D9'/%3E%3Crect x='31' y='11' width='6' height='26' rx='2' fill='%23F5A524'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #0E1116; --bg-deep: #0B0E12; --surface: #161B22; --line: #2A313C;
+  --text: #E6EDF3; --text-2: #C9D1D9; --muted: #8B949E; --dim: #4C5563;
+  --signal: #F5A524; --signal-hover: #FFC35C; --critical: #F25F4C;
+  --display: 'Space Grotesk', sans-serif; --mono: 'JetBrains Mono', monospace;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, system-ui, sans-serif; line-height: 1.5; }
+a { color: var(--signal); }
+a:hover { color: var(--signal-hover); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+.band { border-top: 1px solid var(--line); }
+.band.deep { background: var(--bg-deep); }
+.section { padding-block: 96px; display: flex; flex-direction: column; gap: 40px; }
+.eyebrow { font-family: var(--mono); font-size: 14px; color: var(--signal); }
+.heading { display: flex; flex-direction: column; gap: 12px; max-width: 720px; }
+h1, h2, h3 { margin: 0; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(42px, 6vw, 72px); line-height: 1.02; letter-spacing: -2px; }
+h2 { font-family: var(--display); font-weight: 700; font-size: clamp(32px, 4vw, 48px); line-height: 1.05; letter-spacing: -1px; }
+p { margin: 0; }
+.lead { font-size: 20px; color: var(--text-2); max-width: 580px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 24px; border-radius: 12px; font-weight: 600; font-size: 16px; text-decoration: none; }
+.btn-primary { background: var(--signal); color: var(--bg); }
+.btn-primary:hover { background: var(--signal-hover); color: var(--bg); }
+.btn-ghost { border: 1px solid var(--line); background: var(--surface); color: var(--text); font-weight: 500; }
+.btn-ghost:hover { border-color: var(--signal); color: var(--text); }
+.card { border-radius: 16px; background: var(--surface); border: 1px solid var(--line); padding: 28px; display: flex; flex-direction: column; gap: 12px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 20px; }
+.mono { font-family: var(--mono); }
+.muted { color: var(--muted); }
+
+/* Cabeçalho */
+.top { border-bottom: 1px solid var(--line); }
+.top .wrap { padding-top: 18px; padding-bottom: 18px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 12px; color: var(--text); text-decoration: none; }
+.brand span { font-family: var(--display); font-weight: 700; font-size: 22px; letter-spacing: -.5px; }
+.top nav { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 24px; font-size: 15px; }
+.top nav a:not(.btn) { color: var(--text-2); text-decoration: none; padding: 10px 0; }
+.top nav a:not(.btn):hover { color: var(--text); }
+.top nav .btn { min-height: 44px; padding: 0 18px; border-radius: 10px; font-size: 15px; }
+
+/* Hero */
+.hero { padding-block: 88px 80px; display: flex; flex-wrap: wrap; align-items: center; gap: 56px; }
+.hero-copy { flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 24px; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.mock { flex: 1 1 500px; min-width: 0; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); padding: 22px; display: flex; flex-direction: column; gap: 12px; }
+.mock-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.mock-head strong { font-size: 15px; }
+.mock-head .mono { font-size: 12px; color: var(--muted); }
+.alert-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; border-radius: 10px; background: var(--bg); padding: 12px 14px; }
+.alert-row.critical { box-shadow: inset 3px 0 0 var(--critical); }
+.sev { font-size: 12px; font-weight: 600; border-radius: 6px; padding: 2px 8px; border: 1px solid var(--line); color: var(--text-2); }
+.sev.critical { background: var(--critical); border-color: var(--critical); color: #fff; }
+.sev.warning { color: var(--signal); border-color: var(--signal); }
+.alert-name { font-family: var(--mono); font-size: 14px; overflow-wrap: anywhere; }
+.alert-meta { font-size: 13px; color: var(--muted); }
+.alert-meta a, .alert-meta b { color: var(--signal); font-weight: 500; text-decoration: none; }
+.chip { font-family: var(--mono); font-size: 12px; border-radius: 999px; padding: 2px 10px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.chip.ack { color: #7EE2A8; border-color: #2E6B48; }
+.maint { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; border-radius: 10px; border: 1px dashed var(--line); padding: 10px 14px; font-size: 13px; color: var(--text-2); }
+
+/* Fontes */
+.sources .wrap { padding-top: 28px; padding-bottom: 28px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 32px; }
+.sources span { font-family: var(--mono); font-size: 15px; color: var(--text-2); }
+.sources span:first-child { font-family: inherit; font-size: 14px; color: var(--muted); }
+
+/* Passos e recursos */
+.step-number { font-family: var(--mono); font-size: 15px; color: var(--signal); }
+.step h3 { font-family: var(--display); font-size: 24px; }
+.step p, .step li { color: var(--text-2); }
+.feature { border-radius: 16px; border: 1px solid var(--line); padding: 24px; display: flex; flex-direction: column; gap: 10px; }
+.feature h3 { font-size: 18px; font-weight: 600; }
+.feature p { color: var(--muted); font-size: 15px; }
+.feature svg { width: 28px; height: 28px; fill: none; stroke: var(--signal); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Relatórios */
+.section.split { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 56px; }
+.split > div { flex: 1 1 400px; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.kpi { border-radius: 10px; background: var(--bg); padding: 12px; }
+.kpi span { display: block; font-size: 12px; color: var(--muted); }
+.kpi b { font-family: var(--display); font-size: 26px; }
+.bar-row { display: flex; flex-direction: column; gap: 6px; }
+.bar-label { display: flex; justify-content: space-between; gap: 12px; font-family: var(--mono); font-size: 13px; }
+.bar { height: 8px; border-radius: 4px; background: var(--bg); }
+.bar i { display: block; height: 8px; border-radius: 4px; background: var(--dim); }
+.bar i.top { background: var(--signal); }
+.note { border-radius: 14px; background: var(--surface); border: 1px solid var(--line); padding: 18px 20px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+
+/* Começar */
+.start { max-width: 880px; margin: 0 auto; padding: 104px 24px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 24px; }
+.start .lead { max-width: 640px; }
+pre { margin: 0; width: 100%; text-align: left; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); padding: 20px 22px; overflow-x: auto; font-family: var(--mono); font-size: 14px; line-height: 1.7; color: var(--text-2); }
+pre .c { color: var(--muted); }
+
+/* Rodapé */
+footer .wrap { padding-top: 32px; padding-bottom: 48px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; font-size: 14px; color: var(--muted); }
+footer nav { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+footer a { color: var(--muted); }
+
+@media (max-width: 560px) {
+  .section { padding-block: 72px; }
+  .hero { padding-block: 64px; }
+  .alert-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .alert-row .sev { grid-column: 1 / -1; justify-self: start; }
+  .kpi b { font-size: 22px; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#topo">
+      <svg width="36" height="36" viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="12" fill="#161B22" stroke="#2A313C"/><rect x="11" y="26" width="6" height="11" rx="2" fill="#4C5563"/><rect x="21" y="19" width="6" height="18" rx="2" fill="#8B949E"/><rect x="31" y="11" width="6" height="26" rx="2" fill="#F5A524"/></svg>
+      <span>alertally</span>
+    </a>
+    <nav aria-label="Principal">
+      <a href="#como-funciona">Como funciona</a>
+      <a href="#recursos">Recursos</a>
+      <a href="#relatorios">Relatórios</a>
+      <a class="btn btn-primary" href="https://github.com/sidneiweber/alertally">Ver no GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section id="topo" class="wrap hero">
+  <div class="hero-copy">
+    <span class="eyebrow">// open source · AWS · GCP · Alertmanager</span>
+    <h1>Seus alertas num lugar só. Com dono e contexto.</h1>
+    <p class="lead">O Alertally junta os alertas das suas clouds numa lista única, liga cada alerta ao serviço e ao time responsável e mostra quais disparam demais.</p>
+    <div class="actions">
+      <a class="btn btn-primary" href="#comecar">Rodar em minutos</a>
+      <a class="btn btn-ghost" href="#como-funciona">Ver como funciona</a>
+    </div>
+  </div>
+
+  <figure class="mock" aria-label="Exemplo da lista de alertas ativos" style="margin:0">
+    <div class="mock-head">
+      <strong>Alertas ativos</strong>
+      <span class="mono">dados ilustrativos</span>
+    </div>
+    <div class="alert-row critical">
+      <span class="sev critical">Crítico</span>
+      <div>
+        <div class="alert-name">HighErrorRate</div>
+        <div class="alert-meta"><a href="#recursos">checkout</a> · payments · <b>runbook</b></div>
+      </div>
+      <span class="chip ack">ACK · Ana</span>
+    </div>
+    <div class="alert-row">
+      <span class="sev warning">Aviso</span>
+      <div>
+        <div class="alert-name">PostgresConnectionsHigh</div>
+        <div class="alert-meta"><a href="#recursos">orders-db</a> · storage</div>
+      </div>
+      <span class="chip">Sem ACK</span>
+    </div>
+    <div class="alert-row">
+      <span class="sev">Erro</span>
+      <div>
+        <div class="alert-name">QueueBacklog</div>
+        <div class="alert-meta"><a href="#recursos">payments-worker</a> · payments · <b>dashboard</b></div>
+      </div>
+      <span class="chip">Sem ACK</span>
+    </div>
+    <div class="maint">
+      <span>▸ 3 alertas em manutenção</span>
+      <span class="muted">Deploy do orders-api · até 23:00</span>
+    </div>
+  </figure>
+</section>
+
+<section class="band deep sources" aria-label="Fontes suportadas">
+  <div class="wrap">
+    <span>Recebe alertas de</span>
+    <span>AWS CloudWatch via SNS</span>
+    <span>GCP Cloud Monitoring</span>
+    <span>Prometheus Alertmanager</span>
+  </div>
+</section>
+
+<section id="como-funciona" class="wrap section">
+  <div class="heading">
+    <span class="eyebrow">// como funciona</span>
+    <h2>Do disparo à revisão em três passos.</h2>
+  </div>
+  <div class="grid">
+    <div class="card step">
+      <span class="step-number">01</span>
+      <h3>Conecte</h3>
+      <p>Aponte o webhook do Alertmanager, um tópico SNS da AWS ou um canal de notificação do GCP para o Alertally. Seus alertas atuais continuam iguais.</p>
+    </div>
+    <div class="card step">
+      <span class="step-number">02</span>
+      <h3>Organize</h3>
+      <p>Alertas com a label <span class="mono">service</span> criam o serviço no catálogo sozinhos. O resto aparece como sugestão, agrupado pelas labels do recurso.</p>
+    </div>
+    <div class="card step">
+      <span class="step-number">03</span>
+      <h3>Responda e revise</h3>
+      <p>Dê ACK, abra um incidente, silencie um deploy com uma janela de manutenção e acompanhe nos relatórios o que mais dispara.</p>
+    </div>
+  </div>
+</section>
+
+<section id="recursos" class="band">
+  <div class="wrap section">
+    <div class="heading">
+      <span class="eyebrow">// recursos</span>
+      <h2>Feito para quem está de plantão.</h2>
+    </div>
+    <div class="grid">
+      <div class="feature">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M3 12h18"/><path d="M3 18h12"/></svg>
+        <h3>Lista unificada com ACK</h3>
+        <p>Alertas abertos de todas as fontes, ordenados por severidade e atualizados a cada 5 segundos. O ACK mostra quem já está cuidando.</p>
+      </div>
+      <div class="feature">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <h3>Catálogo de serviços</h3>
+        <p>Serviços e grupos ligados aos alertas por regras de labels, criados automaticamente pela label <span class="mono">service</span> ou a partir de sugestões.</p>
+      </div>
+      <div class="feature">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        <h3>Contexto no alerta</h3>
+        <p>Cada alerta mostra o serviço, o time responsável e os links de runbook e dashboard, sem sair da lista.</p>
+      </div>
+      <div class="feature">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <h3>Incidentes com linha do tempo</h3>
+        <p>Abra um incidente a partir de um alerta, vincule outros, registre o impacto confirmado e acompanhe as notas e as recuperações.</p>
+      </div>
+      <div class="feature">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        <h3>Janelas de manutenção</h3>
+        <p>Durante um deploy, os alertas do serviço saem da lista principal e do contador, e os que abrirem nesse período ficam fora dos relatórios.</p>
+      </div>
+      <div class="feature">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>
+        <h3>Relatórios de ruído</h3>
+        <p>Ranking dos alertas mais acionados, distribuição por severidade e tendência diária em períodos de 1 a 60 dias.</p>
+      </div>
+    </div>
+    <p class="muted">Login com Google, interface em português, inglês e espanhol, e implantação com Docker Compose e MongoDB.</p>
+  </div>
+</section>
+
+<section id="relatorios" class="band deep">
+  <div class="wrap section split">
+    <div>
+      <span class="eyebrow">// relatórios</span>
+      <h2>Números primeiro. Ruído à vista.</h2>
+      <p class="lead">Veja quais alertas concentram os disparos do período, como eles se comparam ao período anterior e quais severidades dominam o volume.</p>
+      <div class="note">
+        <span><span class="mono" style="color:var(--signal)">HighCPUUsage</span> disparou 412 vezes, 32% do total.</span>
+        <span class="muted">38 alertas abertos durante janelas de manutenção ficaram de fora.</span>
+      </div>
+    </div>
+    <figure class="mock" aria-label="Exemplo do relatório de alertas mais acionados" style="margin:0">
+      <div class="mock-head">
+        <strong>Mais acionados · últimos 7 dias</strong>
+        <span class="mono">dados ilustrativos</span>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><span>Disparos</span><b>1.284</b></div>
+        <div class="kpi"><span>Distintos</span><b>57</b></div>
+        <div class="kpi"><span>Vs. anterior</span><b style="color:var(--signal)">+12%</b></div>
+      </div>
+      <div class="bar-row"><div class="bar-label"><span>HighCPUUsage</span><span>412</span></div><div class="bar"><i class="top" style="width:100%"></i></div></div>
+      <div class="bar-row"><div class="bar-label"><span>RDS FreeStorageLow</span><span>238</span></div><div class="bar"><i style="width:58%"></i></div></div>
+      <div class="bar-row"><div class="bar-label"><span>PodCrashLooping</span><span>146</span></div><div class="bar"><i style="width:35%"></i></div></div>
+      <div class="bar-row"><div class="bar-label"><span>Uptime check failed</span><span>97</span></div><div class="bar"><i style="width:24%"></i></div></div>
+      <div class="bar-row"><div class="bar-label"><span>Lambda Errors &gt; 5%</span><span>61</span></div><div class="bar"><i style="width:15%"></i></div></div>
+    </figure>
+  </div>
+</section>
+
+<section id="comecar" class="band">
+  <div class="start">
+    <svg width="64" height="64" viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="12" fill="#161B22" stroke="#2A313C"/><rect x="11" y="26" width="6" height="11" rx="2" fill="#4C5563"/><rect x="21" y="19" width="6" height="18" rx="2" fill="#8B949E"/><rect x="31" y="11" width="6" height="26" rx="2" fill="#F5A524"/></svg>
+    <h2>Menos ruído no próximo plantão.</h2>
+    <p class="lead">O Alertally é open source (MIT). Com Docker, ele sobe localmente com um comando, sem login do Google, para você testar com um alerta de exemplo.</p>
+<pre><code><span class="c"># subir o app em http://localhost:5000</span>
+git clone https://github.com/sidneiweber/alertally.git
+cd alertally
+docker compose -f docker-compose.dev.yaml up --build
+
+<span class="c"># enviar um alerta de teste</span>
+curl -X POST http://localhost:5000/alertmanager \
+  -H 'Content-Type: application/json' \
+  -d '{"alerts": [{"status": "firing", "fingerprint": "test-1",
+       "labels": {"alertname": "DiskFull", "severity": "critical", "service": "storage"},
+       "annotations": {"summary": "Disk at 95%"}}]}'</code></pre>
+    <div class="actions" style="justify-content:center">
+      <a class="btn btn-primary" href="https://github.com/sidneiweber/alertally#readme">Ler a documentação</a>
+      <a class="btn btn-ghost" href="https://github.com/sidneiweber/alertally/blob/main/docs/alertmanager.md">Configurar o Alertmanager</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="band">
+  <div class="wrap">
+    <a class="brand" href="#topo">
+      <svg width="24" height="24" viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="12" fill="#161B22" stroke="#2A313C"/><rect x="11" y="26" width="6" height="11" rx="2" fill="#4C5563"/><rect x="21" y="19" width="6" height="18" rx="2" fill="#8B949E"/><rect x="31" y="11" width="6" height="26" rx="2" fill="#F5A524"/></svg>
+      <span style="font-size:16px">alertally</span>
+    </a>
+    <nav aria-label="Rodapé">
+      <a href="#como-funciona">Como funciona</a>
+      <a href="#recursos">Recursos</a>
+      <a href="https://github.com/sidneiweber/alertally">GitHub</a>
+    </nav>
+    <span>© 2026 Sidnei Weber · Licença MIT</span>
+  </div>
+</footer>
+
+</body>
+</html>
