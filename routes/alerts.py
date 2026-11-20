@@ -15,6 +15,7 @@ from pytz import timezone
 
 from config import Config
 from routes.auth import login_required
+from utils import sns
 from utils.alert_history import alert_event, store_alert
 from utils.enrichment import enrich_alerts
 from utils.helpers import alerts, alerts_dict, get_session_user
@@ -72,20 +73,38 @@ def _http_url(value):
     return value.strip() if parsed.scheme in ('http', 'https') and parsed.hostname else None
 
 
-def _basic_auth_ok(user, password):
-    """Basic auth opcional: sem usuário configurado, libera."""
+def _same(given, expected):
+    """Constant-time comparison that also accepts non-ASCII input."""
+    return hmac.compare_digest((given or '').encode(), (expected or '').encode())
+
+
+def _not_configured(variable):
+    """A webhook without credentials refuses deliveries unless explicitly allowed.
+
+    503 makes the sender retry, so no alert is lost while the setting is fixed.
+    """
+    current_app.logger.error(f'{request.path} refused: set {variable} '
+                             'or ALLOW_UNAUTHENTICATED_WEBHOOKS=true')
+    return jsonify({'error': 'Webhook credentials are not configured'}), 503
+
+
+def _check_basic_auth(user, password, variable):
+    """None when the request may go on, otherwise the error response."""
     if not user:
-        return True
+        return None if Config.ALLOW_UNAUTHENTICATED_WEBHOOKS else _not_configured(variable)
     auth = request.authorization
-    return bool(
-        auth
-        and hmac.compare_digest(auth.username or '', user)
-        and hmac.compare_digest(auth.password or '', password or '')
-    )
-
-
-def _unauthorized():
+    if auth and _same(auth.username, user) and _same(auth.password, password):
+        return None
     return 'Unauthorized', 401, {'WWW-Authenticate': 'Basic realm="alertally"'}
+
+
+def _check_bearer(token, variable):
+    """None when the request may go on, otherwise the error response."""
+    if not token:
+        return None if Config.ALLOW_UNAUTHENTICATED_WEBHOOKS else _not_configured(variable)
+    if _same(request.headers.get('Authorization'), f'Bearer {token}'):
+        return None
+    return jsonify({'error': 'Unauthorized'}), 401
 
 
 def _incident_opened_at(incident_id, raw, now):
@@ -117,8 +136,9 @@ def _gcp_labels(incident, metric):
 
 @alerts_bp.route('/gcp', methods=['POST'])
 def parse_request():
-    if not _basic_auth_ok(Config.GCP_WEBHOOK_USER, Config.GCP_WEBHOOK_PASSWORD):
-        return _unauthorized()
+    refused = _check_basic_auth(Config.GCP_WEBHOOK_USER, Config.GCP_WEBHOOK_PASSWORD, 'GCP_WEBHOOK_USER')
+    if refused:
+        return refused
 
     payload = request.get_json(silent=True)
     incident = payload.get('incident') if isinstance(payload, dict) else None
@@ -216,12 +236,11 @@ def _close_previous_alertmanager_occurrences(fingerprint, starts_at, incident_id
 @alerts_bp.route('/alertmanager', methods=['POST'])
 def parse_alertmanager():
     request_id = uuid4().hex
-    # Token opcional: se ALERTMANAGER_TOKEN estiver definido, exige
     # "Authorization: Bearer <token>" (http_config.authorization no Alertmanager)
-    if Config.ALERTMANAGER_TOKEN:
-        if request.headers.get('Authorization') != f'Bearer {Config.ALERTMANAGER_TOKEN}':
-            am_logger.warning('Alertmanager unauthorized request_id=%s', request_id)
-            return jsonify({'error': 'Unauthorized'}), 401
+    refused = _check_bearer(Config.ALERTMANAGER_TOKEN, 'ALERTMANAGER_TOKEN')
+    if refused:
+        am_logger.warning('Alertmanager refused request_id=%s', request_id)
+        return refused
 
     payload = request.get_json(silent=True)
     if not payload or 'alerts' not in payload:
@@ -305,8 +324,6 @@ def parse_alertmanager():
 
 # ---------- AWS: CloudWatch Alarm -> SNS -> HTTPS ----------
 
-# SubscribeURL legítima do SNS: https://sns.<região>.amazonaws.com[.cn]/...
-_SNS_HOST = re.compile(r'^sns\.[a-z0-9-]+\.amazonaws\.com(\.cn)?$')
 # Convenção na descrição do alarme: "severity=critical" (ou "severity: critical")
 _SEVERITY_TAG = re.compile(r'\bseverity\s*[=:]\s*([a-zA-Z]+)', re.IGNORECASE)
 
@@ -338,9 +355,10 @@ def _aws_labels(alarm, region):
 
 @alerts_bp.route('/aws', methods=['POST'])
 def parse_aws_sns():
-    if not _basic_auth_ok(Config.AWS_SNS_USER, Config.AWS_SNS_PASSWORD):
-        # O SNS só envia as credenciais depois de receber o desafio 401
-        return _unauthorized()
+    # O SNS só envia as credenciais depois de receber o desafio 401
+    refused = _check_basic_auth(Config.AWS_SNS_USER, Config.AWS_SNS_PASSWORD, 'AWS_SNS_USER')
+    if refused:
+        return refused
 
     # O SNS envia JSON com Content-Type text/plain
     try:
@@ -350,16 +368,20 @@ def parse_aws_sns():
     if not isinstance(envelope, dict):
         return jsonify({'error': 'Invalid SNS payload'}), 400
 
-    msg_type = request.headers.get('x-amz-sns-message-type') or envelope.get('Type')
+    # Type is part of the signed text, so it wins over the header.
+    msg_type = envelope.get('Type') or request.headers.get('x-amz-sns-message-type')
     topic_arn = envelope.get('TopicArn', '')
     if Config.AWS_SNS_TOPIC_ARNS and topic_arn not in Config.AWS_SNS_TOPIC_ARNS:
         current_app.logger.warning(f'SNS topic not allowed: {topic_arn}')
         return jsonify({'error': 'Topic not allowed'}), 403
 
+    if Config.AWS_SNS_VERIFY_SIGNATURE and not sns.verify(envelope):
+        current_app.logger.warning(f'SNS message with an invalid signature from {topic_arn}')
+        return jsonify({'error': 'Invalid SNS signature'}), 403
+
     if msg_type == 'SubscriptionConfirmation':
         subscribe_url = envelope.get('SubscribeURL', '')
-        parsed = urlparse(subscribe_url)
-        if parsed.scheme != 'https' or not _SNS_HOST.match(parsed.hostname or ''):
+        if not sns.is_sns_url(subscribe_url):
             return jsonify({'error': 'Invalid SubscribeURL'}), 400
         requests.get(subscribe_url, timeout=10).raise_for_status()
         current_app.logger.info(f'SNS subscription confirmed for {topic_arn}')
@@ -438,19 +460,22 @@ def ack_alert(incident_id):
         if not alert:
             return jsonify({'error': _('Alert not found')}), 404
             
-        if alert.get('ack_by'):
-            return jsonify({'error': _('Alert already acknowledged by %(name)s',
-                                       name=alert.get('ack_by_name') or _('someone'))}), 400
-        
-        alerts.update_one(
-            {'incident_id': incident_id},
+        now = datetime.now(tz=timezone(Config.TIMEZONE))
+        # The ack_by condition makes the first of two simultaneous clicks win.
+        result = alerts.update_one(
+            {'incident_id': incident_id, 'ack_by': None},
             {'$set': {
                 'ack_by': user.get('email'),
                 'ack_by_name': user.get('name'),
-                'ack_at': datetime.now(tz=timezone(Config.TIMEZONE))
-            }}
+                'ack_at': now,
+            },
+             '$push': {'history': alert_event('alert_acked', now, user.get('email'))}}
         )
-        
+        if not result.modified_count:
+            current = alerts.find_one({'incident_id': incident_id}) or alert
+            return jsonify({'error': _('Alert already acknowledged by %(name)s',
+                                       name=current.get('ack_by_name') or _('someone'))}), 400
+
         current_app.logger.info(f'Incident {incident_id} acknowledged by {user.get("email")}')
         
         if request.headers.get('Content-Type') == 'application/json':
@@ -478,15 +503,19 @@ def unack_alert(incident_id):
         if alert.get('ack_by') != user.get('email') and user.get('email') not in Config.ADMIN_USERS:
             return jsonify({'error': _('You can only remove your own acknowledgment')}), 403
         
-        alerts.update_one(
-            {'incident_id': incident_id},
-            {'$unset': {
-                'ack_by': '',
-                'ack_by_name': '',
-                'ack_at': ''
-            }}
-        )
-        
+        if alert.get('ack_by'):
+            # Only the ACK that was checked above is removed, not one made since.
+            alerts.update_one(
+                {'incident_id': incident_id, 'ack_by': alert['ack_by']},
+                {'$unset': {
+                    'ack_by': '',
+                    'ack_by_name': '',
+                    'ack_at': ''
+                },
+                 '$push': {'history': alert_event('alert_unacked', datetime.now(tz=timezone(Config.TIMEZONE)),
+                                                  user.get('email'))}}
+            )
+
         current_app.logger.info(f'Incident {incident_id} acknowledgment removed by {user.get("email")}')
         
         if request.headers.get('Content-Type') == 'application/json':
@@ -496,6 +525,7 @@ def unack_alert(incident_id):
             return redirect(url_for('main.index'))
 
 @alerts_bp.route('/count', methods=['GET'])
+@login_required
 def count_alerts():
     windows = active_windows()
     if not windows:

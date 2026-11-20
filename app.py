@@ -16,6 +16,7 @@ from config import Config
 from routes.alerts import alerts_bp
 from routes.auth import auth_bp
 from routes.catalog import catalog_bp
+from routes.events import events_bp
 from routes.incidents import incidents_bp
 from routes.main import main_bp
 from routes.maintenance import maintenance_bp
@@ -40,6 +41,15 @@ def check_config():
             "SECRET_KEY is not set. Generate one with: "
             "python -c \"import secrets; print(secrets.token_hex(32))\""
         )
+    if Config.ALLOW_UNAUTHENTICATED_WEBHOOKS and not Config.DISABLE_GOOGLE_LOGIN:
+        logging.warning("ALLOW_UNAUTHENTICATED_WEBHOOKS is on: webhooks without credentials accept anyone.")
+    elif not Config.ALLOW_UNAUTHENTICATED_WEBHOOKS:
+        missing = [name for name, value in (
+            ("GCP_WEBHOOK_USER", Config.GCP_WEBHOOK_USER), ("ALERTMANAGER_TOKEN", Config.ALERTMANAGER_TOKEN),
+            ("AWS_SNS_USER", Config.AWS_SNS_USER), ("EVENTS_TOKEN", Config.EVENTS_TOKEN),
+        ) if not value]
+        if missing:
+            logging.info("Webhooks refuse deliveries until their credentials are set: %s", ", ".join(missing))
     if Config.DISABLE_GOOGLE_LOGIN:
         logging.warning("DISABLE_GOOGLE_LOGIN is on: anyone can access Alertally. Use it only locally.")
         return
@@ -79,11 +89,13 @@ app.register_blueprint(main_bp)
 app.register_blueprint(alerts_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(catalog_bp)
+app.register_blueprint(events_bp)
 app.register_blueprint(incidents_bp)
 app.register_blueprint(maintenance_bp)
 
 for webhook in ("parse_request", "parse_alertmanager", "parse_aws_sns"):
     csrf.exempt(f"routes.alerts.{webhook}")
+csrf.exempt("routes.events.receive_events")
 
 init_i18n(app)
 

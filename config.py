@@ -77,3 +77,10 @@ class Config:
     AWS_SNS_USER = os.environ.get("AWS_SNS_USER")
     AWS_SNS_PASSWORD = os.environ.get("AWS_SNS_PASSWORD")
     AWS_SNS_TOPIC_ARNS = _env_list("AWS_SNS_TOPIC_ARNS")
+    AWS_SNS_VERIFY_SIGNATURE = _env_bool("AWS_SNS_VERIFY_SIGNATURE", True)
+
+    EVENTS_TOKEN = os.environ.get("EVENTS_TOKEN")
+
+    # A webhook without credentials refuses deliveries unless this is on.
+    # Local development (no Google login) allows them by default.
+    ALLOW_UNAUTHENTICATED_WEBHOOKS = _env_bool("ALLOW_UNAUTHENTICATED_WEBHOOKS", DISABLE_GOOGLE_LOGIN)

@@ -13,8 +13,9 @@ alarm returns to `OK`, the incident is closed.
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `AWS_SNS_USER` / `AWS_SNS_PASSWORD` | No, but recommended | Username and password (basic auth) sent by SNS. Without them, anyone who can reach the URL can create alerts. |
+| `AWS_SNS_USER` / `AWS_SNS_PASSWORD` | Yes | Username and password (basic auth) sent by SNS. Without them the endpoint answers `503`, unless `ALLOW_UNAUTHENTICATED_WEBHOOKS=true`. |
 | `AWS_SNS_TOPIC_ARNS` | No, but recommended | Comma-separated ARNs of the accepted topics. Messages from other topics get `403`. |
+| `AWS_SNS_VERIFY_SIGNATURE` | No | Checks the cryptographic signature of each SNS message (default `true`). The signing certificate is downloaded once from `sns.<region>.amazonaws.com`, so Alertally needs outbound HTTPS to AWS. |
 
 ```bash
 cat >> .env <<EOF
@@ -138,12 +139,13 @@ Endpoint responses:
 | `200` | Processed, or ignored (the body says why) |
 | `400` | Body is not JSON, or the confirmation link is outside AWS |
 | `401` | Username/password missing or wrong |
-| `403` | Topic not in `AWS_SNS_TOPIC_ARNS` |
+| `403` | Topic not in `AWS_SNS_TOPIC_ARNS`, or invalid SNS signature |
+| `503` | `AWS_SNS_USER` is not set (see `ALLOW_UNAUTHENTICATED_WEBHOOKS`) |
 
 ## Limitations
 
-- Alertally doesn't verify the cryptographic signature of SNS messages. Protection
-  comes from basic auth plus the topic allowlist. If you need stronger guarantees,
-  signature verification can be added later.
+- Signature verification proves a message came from SNS, but any AWS account can
+  create a topic. Keep `AWS_SNS_TOPIC_ARNS` set so only your topics are accepted.
+- Testing with `curl` (unsigned messages) needs `AWS_SNS_VERIFY_SIGNATURE=false`.
 - Only CloudWatch alarms become incidents. Other sources published to the same topic
   (EventBridge, Budgets…) are ignored.
