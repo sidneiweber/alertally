@@ -27,6 +27,16 @@ Spanish (see [docs/i18n.md](docs/i18n.md)).
 - **Reports** (`/reports`): most frequent alerts and daily counts over the last 1, 7, 15, 30 or 60 days.
 - Access control by email domain, email list or admin list.
 
+## Screenshots
+
+Active alerts, sorted by severity, with ACK status and a shortcut to open an incident:
+
+![Active alerts list](screenshots/active-alerts.png)
+
+Reports with the most fired alerts, severity breakdown and daily trend:
+
+![Reports page](screenshots/reports.png)
+
 ## Running locally
 
 You only need Docker with Compose.
