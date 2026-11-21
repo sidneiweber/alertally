@@ -14,6 +14,7 @@ services:
       - DISABLE_GOOGLE_LOGIN=true
       - OAUTHLIB_INSECURE_TRANSPORT=1
       - PYTHONUNBUFFERED=1
+      - ALLOW_UNAUTHENTICATED_WEBHOOKS=true
     # Variáveis opcionais (ALERTMANAGER_TOKEN, AWS_SNS_*...)
     env_file:
       - path: .env
