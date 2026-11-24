@@ -105,7 +105,8 @@ docker compose up -d --build
 ```
 
 The app runs with gunicorn on port 5000. Put a reverse proxy with HTTPS in front
-of it and set `SESSION_COOKIE_SECURE=true`.
+of it and set `FORCE_HTTPS=true`, so the Google sign-in returns to `https://`
+and the session cookie is marked secure.
 
 ### Configuration
 
@@ -124,7 +125,8 @@ Everything comes from environment variables (the `.env` file). See
 | `CATALOG_AUTO_CREATE` | No | Create catalog services from that label automatically (default `true`). |
 | `MAINTENANCE_MAX_HOURS` | No | Longest maintenance window an admin can create, in hours (default `24`). |
 | `CATALOG_STALE_DAYS` | No | Days without alerts before a service is flagged as having no recent activity (default `30`). |
-| `SESSION_COOKIE_SECURE` | No | `true` when served only over HTTPS. |
+| `FORCE_HTTPS` | No | Treat every request as HTTPS when TLS ends at a reverse proxy. Fixes the Google sign-in returning to `http://`. Also turns on `SESSION_COOKIE_SECURE` unless that is set (default `false`). |
+| `SESSION_COOKIE_SECURE` | No | `true` when served only over HTTPS (default: the value of `FORCE_HTTPS`). |
 | `MONGO_URL` / `MONGO_PORT` | No | Where MongoDB is (Compose already points to `mongo`). |
 | `GCP_WEBHOOK_USER` / `GCP_WEBHOOK_PASSWORD` | For `/gcp` | Basic auth for the `/gcp` webhook. |
 | `ALERTMANAGER_TOKEN` | For `/alertmanager` | Bearer token required on `/alertmanager`. |

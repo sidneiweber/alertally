@@ -99,3 +99,19 @@ def test_missing_oauth_credentials_fails_fast(monkeypatch):
 def test_logged_user_email_matches_fixture():
     # sanity check do fixture usado nos outros testes
     assert auth.is_email_allowed(USER["email"])
+
+
+def _google_redirect_uri(client):
+    from urllib.parse import parse_qs, urlparse
+    resp = client.get("/login/google")
+    assert resp.status_code == 302
+    return parse_qs(urlparse(resp.headers["Location"]).query)["redirect_uri"][0]
+
+
+def test_google_redirect_uri_follows_request_scheme(client):
+    assert _google_redirect_uri(client).startswith("http://localhost/")
+
+
+def test_force_https_makes_google_redirect_uri_https(app, monkeypatch):
+    monkeypatch.setattr(app, "wsgi_app", app_module.ForceHttps(app.wsgi_app))
+    assert _google_redirect_uri(app.test_client()) == "https://localhost/login/google/authorized"

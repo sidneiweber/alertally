@@ -63,8 +63,21 @@ def check_config():
 
 check_config()
 
+class ForceHttps:
+    """Marca toda requisição como HTTPS (o TLS termina no proxy reverso)."""
+
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        environ["wsgi.url_scheme"] = "https"
+        return self.wsgi_app(environ, start_response)
+
+
 app = Flask(__name__)
 app.config.from_object(Config())
+if Config.FORCE_HTTPS:
+    app.wsgi_app = ForceHttps(app.wsgi_app)
 app.logger.handlers = []
 app.logger.propagate = True
 
