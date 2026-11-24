@@ -27,8 +27,13 @@ class Config:
         "dev-insecure-secret-key" if DISABLE_GOOGLE_LOGIN else None
     )
     SESSION_COOKIE_SAMESITE = "Lax"
-    # Ative quando o app for servido só por HTTPS
-    SESSION_COOKIE_SECURE = _env_bool("SESSION_COOKIE_SECURE")
+    # Trata toda requisição como HTTPS, mesmo que chegue por HTTP de um proxy
+    # reverso que termina o TLS. Assim o retorno do login do Google e os links
+    # gerados pelo app usam https://.
+    FORCE_HTTPS = _env_bool("FORCE_HTTPS")
+    PREFERRED_URL_SCHEME = "https" if FORCE_HTTPS else "http"
+    # Ative quando o app for servido só por HTTPS (ligado por padrão com FORCE_HTTPS)
+    SESSION_COOKIE_SECURE = _env_bool("SESSION_COOKIE_SECURE", FORCE_HTTPS)
 
     MONGO_URL = os.environ.get("MONGO_URL", "127.0.0.1")
     MONGO_PORT = int(os.environ.get("MONGO_PORT", "27017"))
