@@ -612,3 +612,47 @@ body.alertally .btn-signal:focus-visible { outline: 2px solid var(--al-text); ou
 table.show-maintenance .maintenance-toggle .feather { transform: rotate(90deg); }
 table:not(.show-maintenance) tr.maintenance-row { display: none; }
 tr.maintenance-row { opacity: .75; }
+
+/* severidade compacta: legenda em linha sob a barra */
+body.alertally .sev-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--al-text-2); }
+body.alertally .sev-legend li { display: inline-flex; align-items: center; gap: 6px; }
+body.alertally .sev-legend .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sev); }
+body.alertally .sev-legend .pct { color: var(--al-muted); font-size: 12px; }
+
+/* tempo de resposta */
+body.alertally .response-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+body.alertally .response-metric { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+body.alertally .response-value {
+    font-family: var(--al-display);
+    font-weight: 700;
+    font-size: 26px;
+    line-height: 1.2;
+    color: var(--al-text);
+}
+body.alertally .response-value.muted { color: var(--al-muted); }
+body.alertally .response-delta { font: 500 12px var(--al-mono); color: var(--al-muted); }
+body.alertally .response-delta.trend-up { color: var(--al-critical); }
+body.alertally .response-delta.trend-down { color: var(--al-resolved); }
+body.alertally .response-foot { margin-top: 16px; font-size: 13px; color: var(--al-muted); }
+body.alertally .response-foot strong { color: var(--al-text); }
+
+/* alertas ruidosos */
+body.alertally .noisy-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+body.alertally .noisy-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; font-size: 13px; }
+body.alertally .noisy-list .name { color: var(--al-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.alertally .noisy-list .count { color: var(--al-signal); font-weight: 500; text-align: right; }
+body.alertally .noisy-list .count .of { color: var(--al-muted); font-weight: 400; }
+body.alertally .noisy-list .meta { grid-column: 1 / -1; font-size: 12px; color: var(--al-muted); }
+
+/* mapa de calor: dia da semana × hora */
+body.alertally .heatmap-scroll { overflow-x: auto; }
+body.alertally .heatmap { display: flex; flex-direction: column; gap: 3px; min-width: 420px; }
+body.alertally .heatmap-row { display: grid; grid-template-columns: 36px repeat(24, minmax(0, 1fr)); gap: 3px; align-items: center; }
+body.alertally .heatmap-day { font: 500 11px var(--al-mono); color: var(--al-muted); text-transform: capitalize; }
+body.alertally .heatmap-cell {
+    aspect-ratio: 1;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--al-signal) calc(15% + var(--level) * 85%), var(--al-surface-2));
+}
+body.alertally .heatmap-cell.empty { background: var(--al-surface-2); }
+body.alertally .heatmap-hours span { font: 400 10px var(--al-mono); color: var(--al-muted); }

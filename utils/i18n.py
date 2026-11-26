@@ -85,6 +85,21 @@ def init_i18n(app):
         pattern = "#,##0" + ("." + "#" * decimals if decimals else "") + "%"
         return format_percent(fraction, format=pattern, locale=current_language())
 
+    @app.template_filter("duration")
+    def duration(seconds):
+        """Duração curta: 45s, 12min, 3h 05min, 2d 4h."""
+        seconds = int(round(seconds or 0))
+        if seconds < 60:
+            return f"{seconds}s"
+        minutes = seconds // 60
+        if minutes < 60:
+            return f"{minutes}min"
+        hours, minutes = divmod(minutes, 60)
+        if hours < 24:
+            return f"{hours}h {minutes:02d}min" if minutes else f"{hours}h"
+        days, hours = divmod(hours, 24)
+        return f"{days}d {hours}h" if hours else f"{days}d"
+
     @app.template_filter("severity_label")
     def severity_label(value):
         return SEVERITY_LABELS.get(value, value or SEVERITY_LABELS["Unknown"])

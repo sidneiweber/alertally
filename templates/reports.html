@@ -187,9 +187,9 @@
                     </section>
                 </div>
 
-                <!-- Severidade -->
-                <div class="col-xl-4 col-12">
-                    <section class="report-card h-100" aria-labelledby="sev-title">
+                <!-- Severidade (compacta) + tempo de resposta -->
+                <div class="col-xl-4 col-12 d-flex flex-column gap-3">
+                    <section class="report-card" aria-labelledby="sev-title">
                         <header class="report-card-head">
                             <h2 id="sev-title">{{ _('Severity') }}</h2>
                             <span class="eyebrow">{{ _('%% of firings') }}</span>
@@ -203,18 +203,56 @@
                                style="flex: {{ s.count }}"></i>
                             {% endfor %}
                         </div>
-                        <ul class="sev-list">
+                        <ul class="sev-legend">
                             {% for s in severity_reports %}
-                            {% set n = s._id.severity_number %}
-                            <li class="{{ sev_class(n) }}">
-                                <span class="sev-badge{% if n == 5 %} solid{% endif %}">
-                                    <i data-feather="{{ sev_icon(n) }}" aria-hidden="true"></i>{{ s._id.severity|severity_label }}
-                                </span>
-                                <span class="mono count">{{ s.count }}</span>
+                            <li class="{{ sev_class(s._id.severity_number) }}" title="{{ s.count }}">
+                                <span class="dot" aria-hidden="true"></span>{{ s._id.severity|severity_label }}
                                 <span class="mono pct">{{ fmt_percent(s.count / sev_total) }}</span>
                             </li>
                             {% endfor %}
                         </ul>
+                        {% else %}
+                        <p class="empty-state text-center mb-0">{{ _('No data.') }}</p>
+                        {% endif %}
+                    </section>
+
+                    <section class="report-card flex-grow-1" aria-labelledby="response-title">
+                        <header class="report-card-head">
+                            <h2 id="response-title">{{ _('Response time') }}</h2>
+                            <span class="eyebrow">{{ _('median · p90') }}</span>
+                        </header>
+
+                        {% if response.occurrences %}
+                        <div class="response-grid">
+                            {% for key, label in [('ack', _('Until acknowledged')), ('resolve', _('Until resolved'))] %}
+                            {% set m = response[key] %}
+                            {% set delta = response[key ~ '_change'] %}
+                            <div class="response-metric">
+                                <span class="kpi-label">{{ label }}</span>
+                                {% if m %}
+                                <b class="response-value">{{ m.median|duration }}</b>
+                                <span class="kpi-sub">p90 <span class="mono">{{ m.p90|duration }}</span></span>
+                                {% if delta is not none %}
+                                <span class="response-delta {% if delta > 0 %}trend-up{% elif delta < 0 %}trend-down{% endif %}"
+                                      title="{{ _('Compared to the median of the previous period') }}">
+                                    {% if delta > 0 %}+{% endif %}{{ fmt_percent(delta) }} {{ _('vs. previous') }}
+                                </span>
+                                {% endif %}
+                                {% else %}
+                                <b class="response-value muted">—</b>
+                                <span class="kpi-sub">{{ _('no data') }}</span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <p class="response-foot mb-0">
+                            {% if response.unacked %}
+                            {{ _('%(pct)s of firings were never acknowledged.',
+                                 pct=('<strong>'|safe) ~ fmt_percent(response.unacked / response.occurrences) ~ ('</strong>'|safe)) }}
+                            {% else %}
+                            {{ _('Every firing was acknowledged.') }}
+                            {% endif %}
+                        </p>
                         {% else %}
                         <p class="empty-state text-center mb-0">{{ _('No data.') }}</p>
                         {% endif %}
@@ -236,6 +274,80 @@
                             aria-label="{{ ngettext('Firings per day over the last %(num)d day compared to the previous period', 'Firings per day over the last %(num)d days compared to the previous period', days) }}"></canvas>
                 </div>
             </section>
+
+            <div class="row g-3 mt-0">
+                <!-- Alertas ruidosos -->
+                <div class="col-xl-5 col-12">
+                    <section class="report-card h-100" aria-labelledby="noisy-title">
+                        <header class="report-card-head">
+                            <h2 id="noisy-title">{{ _('Noisy alerts') }}</h2>
+                            <span class="eyebrow">{{ _('recovered alone in under %(num)d min, no ack', num=flap_minutes) }}</span>
+                        </header>
+
+                        {% if noisy['items'] %}
+                        <ol class="noisy-list">
+                            {% for n in noisy['items'] %}
+                            <li>
+                                <span class="name mono" title="{{ n.name }}">{{ n.name }}</span>
+                                <span class="count mono">{{ n.flaps }}<span class="of">/{{ n.total }}</span></span>
+                                <span class="meta">
+                                    {% if n.service %}<span class="mono">service={{ n.service }}</span> · {% endif %}
+                                    {{ _('%(pct)s of its firings', pct=fmt_percent(n.rate)) }}
+                                    · {{ _('lasts ~%(time)s', time=n.median_duration|duration) }}
+                                </span>
+                            </li>
+                            {% endfor %}
+                        </ol>
+                        <p class="response-foot mb-0">
+                            {{ ngettext('%(num)d firing could likely be avoided by tuning thresholds or delays.',
+                                        '%(num)d firings could likely be avoided by tuning thresholds or delays.',
+                                        noisy.flaps) }}
+                        </p>
+                        {% else %}
+                        <p class="empty-state text-center mb-0">{{ _('No noisy alerts in this period.') }}</p>
+                        {% endif %}
+                    </section>
+                </div>
+
+                <!-- Mapa de calor: dia da semana × hora -->
+                <div class="col-xl-7 col-12">
+                    <section class="report-card h-100" aria-labelledby="heatmap-title">
+                        <header class="report-card-head">
+                            <h2 id="heatmap-title">{{ _('When alerts fire') }}</h2>
+                            <span class="eyebrow">{{ _('firings by weekday and hour') }} · {{ timezone_name }}</span>
+                        </header>
+
+                        {% if heatmap.total %}
+                        <div class="heatmap-scroll">
+                            <div class="heatmap" role="table" aria-label="{{ _('Firings by weekday and hour') }}">
+                                {% for day in heatmap.grid %}
+                                {% set d = loop.index0 %}
+                                <div class="heatmap-row" role="row">
+                                    <span class="heatmap-day" role="rowheader">{{ heatmap.days[d] }}</span>
+                                    {% for count in day %}
+                                    <span class="heatmap-cell{% if not count %} empty{% endif %}" role="cell"
+                                          style="--level: {{ (count / heatmap.max)|round(2) }}"
+                                          title="{{ heatmap.days[d] }} {{ '%02d'|format(loop.index0) }}h · {{ ngettext('%(num)d firing', '%(num)d firings', count) }}"></span>
+                                    {% endfor %}
+                                </div>
+                                {% endfor %}
+                                <div class="heatmap-row heatmap-hours" aria-hidden="true">
+                                    <span></span>
+                                    {% for h in range(24) %}<span>{% if h % 3 == 0 %}{{ '%02d'|format(h) }}{% endif %}</span>{% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <p class="response-foot mb-0">
+                            {{ _('%(pct)s opened outside business hours (Mon–Fri, 9h–18h).',
+                                 pct=('<strong>'|safe) ~ fmt_percent(heatmap.off_hours / heatmap.total) ~ ('</strong>'|safe)) }}
+                            {{ _('Peak: %(day)s at %(hour)sh.', day=heatmap.days[heatmap.peak.day], hour='%02d'|format(heatmap.peak.hour)) }}
+                        </p>
+                        {% else %}
+                        <p class="empty-state text-center mb-0">{{ _('No data.') }}</p>
+                        {% endif %}
+                    </section>
+                </div>
+            </div>
         </div>
     </main>
 </div>

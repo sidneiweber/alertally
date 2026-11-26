@@ -876,3 +876,78 @@ msgid "%(num)d service"
 msgid_plural "%(num)d services"
 msgstr[0] "%(num)d serviço"
 msgstr[1] "%(num)d serviços"
+
+msgid "Response time"
+msgstr "Tempo de resposta"
+
+msgid "median · p90"
+msgstr "mediana · p90"
+
+msgid "Until acknowledged"
+msgstr "Até o reconhecimento"
+
+msgid "Until resolved"
+msgstr "Até a resolução"
+
+msgid "Compared to the median of the previous period"
+msgstr "Comparado à mediana do período anterior"
+
+msgid "vs. previous"
+msgstr "vs. anterior"
+
+msgid "no data"
+msgstr "sem dados"
+
+#, python-format
+msgid "%(pct)s of firings were never acknowledged."
+msgstr "%(pct)s dos disparos nunca foram reconhecidos."
+
+msgid "Every firing was acknowledged."
+msgstr "Todos os disparos foram reconhecidos."
+
+msgid "Noisy alerts"
+msgstr "Alertas ruidosos"
+
+#, python-format
+msgid "recovered alone in under %(num)d min, no ack"
+msgstr "recuperaram sozinhos em menos de %(num)d min, sem ACK"
+
+#, python-format
+msgid "%(pct)s of its firings"
+msgstr "%(pct)s dos seus disparos"
+
+#, python-format
+msgid "lasts ~%(time)s"
+msgstr "dura ~%(time)s"
+
+#, python-format
+msgid "%(num)d firing could likely be avoided by tuning thresholds or delays."
+msgid_plural "%(num)d firings could likely be avoided by tuning thresholds or delays."
+msgstr[0] "%(num)d disparo provavelmente seria evitado ajustando limiares ou atrasos."
+msgstr[1] "%(num)d disparos provavelmente seriam evitados ajustando limiares ou atrasos."
+
+msgid "No noisy alerts in this period."
+msgstr "Nenhum alerta ruidoso no período."
+
+msgid "When alerts fire"
+msgstr "Quando os alertas disparam"
+
+msgid "firings by weekday and hour"
+msgstr "disparos por dia da semana e hora"
+
+msgid "Firings by weekday and hour"
+msgstr "Disparos por dia da semana e hora"
+
+#, python-format
+msgid "%(num)d firing"
+msgid_plural "%(num)d firings"
+msgstr[0] "%(num)d disparo"
+msgstr[1] "%(num)d disparos"
+
+#, python-format
+msgid "%(pct)s opened outside business hours (Mon–Fri, 9h–18h)."
+msgstr "%(pct)s abriram fora do horário comercial (seg–sex, 9h–18h)."
+
+#, python-format
+msgid "Peak: %(day)s at %(hour)sh."
+msgstr "Pico: %(day)s às %(hour)sh."

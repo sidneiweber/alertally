@@ -6,7 +6,9 @@ from datetime import datetime, timedelta
 from utils.helpers import alerts, get_session_user
 from routes.auth import login_required
 from config import Config
-from utils.i18n import LANG_COOKIE, LANGUAGES
+from utils.i18n import LANG_COOKIE, LANGUAGES, current_language
+from utils import report_metrics
+from babel.dates import get_day_names
 
 main_bp = Blueprint('main', __name__)
 
@@ -149,6 +151,18 @@ def reports():
     previous_daily = _daily_counts(previous_limit_date, limit_date, scope)
     previous_daily = (previous_daily + [{"count": 0}] * len(current_daily))[:len(current_daily)]
 
+    # Tempo de resposta, alertas ruidosos e horário de abertura (pelo histórico)
+    history_docs = list(alerts.find({**scope, "update_at": {"$gte": previous_limit_date}},
+                                    report_metrics.PROJECTION))
+    response = report_metrics.response_times(history_docs, limit_date, now)
+    previous_response = report_metrics.response_times(history_docs, previous_limit_date, limit_date)
+    response['ack_change'] = report_metrics.change(response['ack'], previous_response['ack'])
+    response['resolve_change'] = report_metrics.change(response['resolve'], previous_response['resolve'])
+    noisy = report_metrics.noisy_alerts(history_docs, limit_date, now)
+    heatmap = report_metrics.opening_heatmap(history_docs, limit_date, now, Config.TIMEZONE)
+    day_names = get_day_names('abbreviated', locale=current_language())
+    heatmap['days'] = [day_names[d].rstrip('.') for d in range(7)]
+
     period_comparison = {
         "current_count": current_period_count,
         "previous_count": previous_period_count,
@@ -170,5 +184,10 @@ def reports():
         options=Config.ALLOWED_DAYS,
         include_maintenance=include_maintenance,
         maintenance_count=maintenance_count,
+        response=response,
+        noisy=noisy,
+        flap_minutes=int(report_metrics.FLAP_WINDOW.total_seconds() // 60),
+        heatmap=heatmap,
+        timezone_name=Config.TIMEZONE,
     )
 
