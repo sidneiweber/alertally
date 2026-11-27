@@ -8,7 +8,7 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - .:/app:z        # recarrega o código ao salvar (:z = SELinux)
+      #- .:/app:z        # recarrega o código ao salvar (:z = SELinux)
     environment:
       - MONGO_URL=mongo
       - DISABLE_GOOGLE_LOGIN=true
